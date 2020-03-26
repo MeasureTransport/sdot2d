@@ -15,6 +15,7 @@ set(LibrarySources
     src/LaguerreDiagram.cpp
     src/PolygonRasterize.cpp
     src/RegularGrid.cpp
+    src/DiscretizedDistribution.cpp
     )
 
 include_directories(include)
@@ -26,5 +27,8 @@ add_library(sdot ${LibrarySources})
 target_link_libraries(sdot ${ExternalLibraries})
 
 
-add_executable(InitialTest tests/ConstructLaguerre.cpp)
-target_link_libraries(InitialTest sdot ${OtherLibraries})
+add_executable(ConstructLaguerre tests/ConstructLaguerre.cpp)
+target_link_libraries(ConstructLaguerre sdot ${OtherLibraries})
+
+add_executable(ComputeSDOT tests/ComputeSDOT.cpp)
+target_link_libraries(ComputeSDOT sdot ${OtherLibraries})

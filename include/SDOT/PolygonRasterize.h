@@ -65,6 +65,11 @@ namespace sdot {
       /** Returns a polygon containing the current grid clipped to the polygon. */
       std::shared_ptr<Polygon_2> const& OverlapPoly() const{return overlapPoly;};
 
+      double LeftX() const{return xleft;};
+      double RightX() const{return xright;};
+      double BottomY() const{return ybot;};
+      double TopY() const{return ytop;};
+      
     private:
 
       const double compTol = 1e-14;
@@ -76,6 +81,12 @@ namespace sdot {
       bool isBoundary;
 
       std::pair<int,int> indices;
+
+      // The following doubles hold the bounds of the current grid cell
+      double xleft;
+      double xright;
+      double ybot;
+      double ytop;
 
       std::shared_ptr<RegularGrid> grid;
       std::shared_ptr<Polygon_2> poly;
@@ -153,6 +164,10 @@ namespace sdot {
            between prevCross and nextCross.
        */
        void AddCorners(Point_2 const& nextPt, std::vector<Point_2> &polyPts) const;
+
+
+       void UpdateCellBounds();
+
   };
 
 } // namespace sdot

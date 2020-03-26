@@ -36,6 +36,8 @@ PolygonRasterizeIter::PolygonRasterizeIter(std::shared_ptr<RegularGrid> const& g
 
   indices = std::make_pair(xInd_begin,yInd);
   overlapPoly = BoundaryIntersection();
+  UpdateCellBounds();
+
 }
 
 std::tuple<unsigned int, unsigned int, unsigned int, unsigned int> PolygonRasterizeIter::GetXInds(double y) const
@@ -171,16 +173,18 @@ void PolygonRasterizeIter::UpdateEdges(unsigned int yInd)
   }
 }
 
+void PolygonRasterizeIter::UpdateCellBounds()
+{
+  xleft = indices.first * grid->dx + grid->xMin;
+  xright = xleft + grid->dx;
+  ybot = indices.second * grid->dy + grid->yMin;
+  ytop = ybot + grid->dy;
+}
+
 std::pair<std::shared_ptr<PolygonRasterizeIter::Point_2>,
           std::shared_ptr<PolygonRasterizeIter::Point_2>> PolygonRasterizeIter::EdgeCrossings(PolygonEdge const& edge,
                                                                                               bool includeEdges)
 {
-  // locations of grid cell boundaries
-  double xleft = indices.first * grid->dx + grid->xMin;
-  double xright = xleft + grid->dx;
-  double ybot = indices.second * grid->dy + grid->yMin;
-  double ytop = ybot + grid->dy;
-
   // locations of the source and target vertices of the edge
   double tx = CGAL::to_double( edge.second->x() );
   double ty = CGAL::to_double( edge.second->y() );
@@ -342,10 +346,10 @@ std::pair<std::shared_ptr<PolygonRasterizeIter::Point_2>,
 
 void PolygonRasterizeIter::AddCorners(Point_2 const& nextPt, std::vector<Point_2> &polyPts) const
 {
-  const double xmin = indices.first * grid->dx + grid->xMin;
-  const double xmax = xmin + grid->dx;
-  const double ymin = indices.second * grid->dy + grid->yMin;
-  const double ymax = ymin + grid->dy;
+  // const double xmin = indices.first * grid->dx + grid->xMin;
+  // const double xmax = xmin + grid->dx;
+  // const double ymin = indices.second * grid->dy + grid->yMin;
+  // const double ymax = ymin + grid->dy;
 
   double backX = CGAL::to_double( polyPts.back().x() );
   double backY = CGAL::to_double( polyPts.back().y() );
@@ -364,20 +368,20 @@ void PolygonRasterizeIter::AddCorners(Point_2 const& nextPt, std::vector<Point_2
     // Add corner point
 
     // Currently on the right
-    if((std::abs(backX-xmax)<compTol)&&(backY<ymax-compTol)){
-      polyPts.push_back( Point_2(xmax,ymax) );
+    if((std::abs(backX-xright)<compTol)&&(backY<ytop-compTol)){
+      polyPts.push_back( Point_2(xright,ytop) );
 
     // Currently on the top
-    }else if((std::abs(backY-ymax)<compTol)&&(backX>xmin+compTol)){
-      polyPts.push_back( Point_2(xmin, ymax) );
+    }else if((std::abs(backY-ytop)<compTol)&&(backX>xleft+compTol)){
+      polyPts.push_back( Point_2(xleft, ytop) );
 
     // Currently on the left
-    }else if((std::abs(backX-xmin)<compTol)&&(backY>ymin+compTol)){
-      polyPts.push_back( Point_2(xmin, ymin) );
+    }else if((std::abs(backX-xleft)<compTol)&&(backY>ybot+compTol)){
+      polyPts.push_back( Point_2(xleft, ybot) );
 
     // On the bottom
-    }else if((std::abs(backY-ymin)<compTol)&&(backX<xmax-compTol)){
-      polyPts.push_back( Point_2(xmax, ymin) );
+    }else if((std::abs(backY-ybot)<compTol)&&(backX<xright-compTol)){
+      polyPts.push_back( Point_2(xright, ybot) );
 
     }else{
       std::cerr << "I shouldn't be here... " << std::endl;
@@ -400,12 +404,7 @@ void PolygonRasterizeIter::AddCorners(Point_2 const& nextPt, std::vector<Point_2
 std::shared_ptr<PolygonRasterizeIter::Polygon_2> PolygonRasterizeIter::BoundaryIntersection()
 {
 
-  // Get the x,y bounds of the current grid cell
-  const double xmin = indices.first * grid->dx + grid->xMin;
-  const double xmax = xmin + grid->dx;
-  const double ymin = indices.second * grid->dy + grid->yMin;
-  const double ymax = ymin + grid->dy;
-  //std::cout << "Bounds = (" << xmin << "," << ymin << ") -> (" << xmax << "," << ymax << ")" << std::endl;
+  //std::cout << "Bounds = (" << xleft << "," << ybot << ") -> (" << xright << "," << ytop << ")" << std::endl;
 
   // The edgesCW and edgesCCW containers contain edges that could overlap with
   // each grid cell
@@ -437,7 +436,7 @@ std::shared_ptr<PolygonRasterizeIter::Polygon_2> PolygonRasterizeIter::BoundaryI
       }
 
     // If no entrance point, then add source node if it is inside the grid cell
-    }else if((edge.first->x()<xmax-compTol)&&(edge.first->x()>xmin+compTol)&&(edge.first->y()>ymin+compTol)&&(edge.first->y()<ymax+compTol)){
+    }else if((edge.first->x()<xright-compTol)&&(edge.first->x()>xleft+compTol)&&(edge.first->y()>ybot+compTol)&&(edge.first->y()<ytop+compTol)){
       if(polyPts.size()>0){
         if(polyPts.back()!=(*edge.first)){
           polyPts.push_back(*edge.first);
@@ -459,7 +458,7 @@ std::shared_ptr<PolygonRasterizeIter::Polygon_2> PolygonRasterizeIter::BoundaryI
       }
 
     // If no exit point, check to see if target is inside
-    }else if((edge.second->x()<xmax-compTol)&&(edge.second->x()>xmin+compTol)&&(edge.second->y()>ymin+compTol)&&(edge.second->y()<ymax+compTol)){
+    }else if((edge.second->x()<xright-compTol)&&(edge.second->x()>xleft+compTol)&&(edge.second->y()>ybot+compTol)&&(edge.second->y()<ytop+compTol)){
       if(polyPts.size()>0){
         if(polyPts.back()!=(*edge.second)){
           polyPts.push_back(*edge.second);
@@ -480,9 +479,9 @@ std::shared_ptr<PolygonRasterizeIter::Polygon_2> PolygonRasterizeIter::BoundaryI
    double cwy = CGAL::to_double( edgesCW.back().second->y() );
    double ccwx = CGAL::to_double( edgesCCW.back().second->x() );
    double cwx = CGAL::to_double( edgesCW.back().second->x() );
-   if((std::abs(ccwy-cwy)<compTol)&&(ccwx>xmin+compTol)&&(cwx<xmax-compTol)){
-     if((ccwy>ymin+compTol)&&(ccwy<ymax-compTol)){
-       Point_2 newPt(std::min(xmax,ccwx), ccwy);
+   if((std::abs(ccwy-cwy)<compTol)&&(ccwx>xleft+compTol)&&(cwx<xright-compTol)){
+     if((ccwy>ybot+compTol)&&(ccwy<ytop-compTol)){
+       Point_2 newPt(std::min(xright,ccwx), ccwy);
        if(polyPts.size()>0){
          if(newPt != polyPts.back())
            polyPts.push_back(newPt);
@@ -490,7 +489,7 @@ std::shared_ptr<PolygonRasterizeIter::Polygon_2> PolygonRasterizeIter::BoundaryI
          polyPts.push_back( newPt );
        }
 
-       polyPts.push_back( Point_2(std::max(xmin,cwx), cwy) );
+       polyPts.push_back( Point_2(std::max(xleft,cwx), cwy) );
      }
    }
 
@@ -516,7 +515,7 @@ std::shared_ptr<PolygonRasterizeIter::Polygon_2> PolygonRasterizeIter::BoundaryI
       }
 
     // If no enter point, check edge
-    }else if((edgeIter->second->x()<xmax-compTol)&&(edgeIter->second->x()>xmin+compTol)&&(edgeIter->second->y()>ymin+compTol)&&(edgeIter->second->y()<ymax-compTol)){
+    }else if((edgeIter->second->x()<xright-compTol)&&(edgeIter->second->x()>xleft+compTol)&&(edgeIter->second->y()>ybot+compTol)&&(edgeIter->second->y()<ytop-compTol)){
       if(polyPts.size()>0){
         if(polyPts.back()!=(*edgeIter->second)){
           polyPts.push_back(*edgeIter->second);
@@ -537,7 +536,7 @@ std::shared_ptr<PolygonRasterizeIter::Polygon_2> PolygonRasterizeIter::BoundaryI
       }else{
         polyPts.push_back(*exitPt);
       }
-    }else if((edgeIter->first->x()<xmax-compTol)&&(edgeIter->first->x()>xmin+compTol)&&(edgeIter->first->y()>ymin+compTol)&&(edgeIter->first->y()<ymax+compTol)){
+    }else if((edgeIter->first->x()<xright-compTol)&&(edgeIter->first->x()>xleft+compTol)&&(edgeIter->first->y()>ybot+compTol)&&(edgeIter->first->y()<ytop+compTol)){
       if(polyPts.size()>0){
         if(polyPts.back()!=(*edgeIter->first)){
           polyPts.push_back(*edgeIter->first);
@@ -561,16 +560,16 @@ std::shared_ptr<PolygonRasterizeIter::Polygon_2> PolygonRasterizeIter::BoundaryI
   ccwx = CGAL::to_double( edgesCCW.front().first->x() );
   cwx = CGAL::to_double( edgesCW.front().first->x() );
 
-  if((std::abs(ccwy-cwy)<compTol)&&(ccwx>xmin+compTol)&&(cwx<xmax-compTol)){
-    if(ccwy>ymin+compTol){
+  if((std::abs(ccwy-cwy)<compTol)&&(ccwx>xleft+compTol)&&(cwx<xright-compTol)){
+    if(ccwy>ybot+compTol){
       if(polyPts.size()>0){
-        Point_2 newPt(std::min(xmax,ccwx), ccwy);
+        Point_2 newPt(std::min(xright,ccwx), ccwy);
         if(polyPts.front() != newPt)
           polyPts.insert(polyPts.begin(), newPt);
-        polyPts.insert(polyPts.begin(), Point_2(std::max(xmin,cwx), cwy));
+        polyPts.insert(polyPts.begin(), Point_2(std::max(xleft,cwx), cwy));
       }else{
-        polyPts.push_back(Point_2(std::max(xmin,cwx), cwy));
-        polyPts.push_back(Point_2(std::min(xmax,ccwx), ccwy));
+        polyPts.push_back(Point_2(std::max(xleft,cwx), cwy));
+        polyPts.push_back(Point_2(std::min(xright,ccwx), ccwy));
       }
     }
   }
@@ -600,9 +599,9 @@ std::shared_ptr<PolygonRasterizeIter::Polygon_2> PolygonRasterizeIter::BoundaryI
 PolygonRasterizeIter& PolygonRasterizeIter::Increment()
 {
   indices.first++;
+  UpdateCellBounds();
 
   if(indices.first>xInd_end){
-
 
     // Increment the yInd and find the new x values
     unsigned int yInd = indices.second+1;
@@ -633,7 +632,7 @@ PolygonRasterizeIter& PolygonRasterizeIter::Increment()
     }
 
     indices = std::make_pair(xInd_begin, yInd);
-
+    UpdateCellBounds();
   }
 
 
