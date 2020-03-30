@@ -17,8 +17,8 @@ namespace sdot{
 
     virtual ~Distribution2d() = default;
 
-    /** Returns the probability measure of a particular grid cell. */
-    virtual double Probability(unsigned int xInd, unsigned int yInd) const = 0;
+    /** Returns the constant density over a particular grid cell. */
+    virtual double Density(unsigned int xInd, unsigned int yInd) const = 0;
 
     virtual std::shared_ptr<RegularGrid> const& Grid() const{return grid;};
 

@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
 {
   int numPts = 3;
   Eigen::VectorXd costs(numPts);
-  costs << 1.0, 1.0, 1.0;
+  costs << 1.0, 1.0, 1.0+1e-4;
 
   Eigen::Matrix2Xd pts(2,numPts);
   pts << 0.1, 0.2, 0.1,
@@ -31,18 +31,20 @@ int main(int argc, char* argv[])
   domain << 0.0, 1.0, 1.0, 0.0,
             0.0, 0.0, 1.0, 1.0;
 
-  LaguerreDiagram diag(pts, costs, domain);
+  LaguerreDiagram diag(domain(0,0), domain(0,1), domain(1,0), domain(1,2), pts, costs);
 
-  auto grid = std::make_shared<RegularGrid>(domain(0,0),domain(1,0), domain(0,2), domain(1,2), 200, 200);
+  auto grid = std::make_shared<RegularGrid>(domain(0,0),domain(1,0), domain(0,2), domain(1,2), 20, 20);
 
   double area = 0.0;
   Eigen::VectorXd localAreas = Eigen::VectorXd::Zero(3);
   Eigen::MatrixXd cellAreas = Eigen::MatrixXd::Zero(grid->NumCells(0), grid->NumCells(1));
 
   for(int polyInd=0; polyInd<3; ++polyInd){
+    std::cout << "\n\n==================================\n";
     std::cout << "Polygon " << polyInd << std::endl;
     std::shared_ptr<PolygonRasterizeIter::Polygon_2> poly = diag.GetCell(polyInd);
 
+    std::cout << "  " << *poly << std::endl;
     PolygonRasterizeIter gridIter(grid,poly);
     //
     // unsigned int oldYInd = gridIter.Indices().second;
@@ -62,11 +64,10 @@ int main(int argc, char* argv[])
 
       double cellArea;
 
-      // std::cout << gridIter.Indices().first << ",  " << std::flush;
-
+      
       if(gridIter.IsBoundary()){
         cellArea = CGAL::to_double( gridIter.OverlapPoly()->area() );
-
+        //std::cout << "  " << gridIter.Indices().first << ", " << gridIter.Indices().second << " -> Overlap poly = " << *gridIter.OverlapPoly() << std::endl;
         // unsigned int indX = gridIter.Indices().first;
         // unsigned int indY = gridIter.Indices().second;
         //

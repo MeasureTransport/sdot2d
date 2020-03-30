@@ -54,12 +54,25 @@ double RegularGrid::RightSide(double x) const
   return xMin + dx*RightNode(x);
 }
 
+double RegularGrid::BottomSide(double y) const
+{
+  return yMin + dy*BottomNode(y);
+}
+
+/** Returns the x coordinate of the left side of the cells containig x. */
+double RegularGrid::TopSide(double x) const
+{
+  return yMin + dy*TopNode(x);
+}
+
 unsigned int RegularGrid::RightNode(double x) const
 {
   double indDouble = (x-xMin)/dx;
   double distToNode = std::abs(std::round(indDouble) - indDouble);
 
-  if(distToNode<compTol){
+  if(x>xMax-compTol){
+    return Nx;
+  }else if(distToNode<compTol){
     return std::round(indDouble);
   }else{
     return std::ceil((x-xMin)/dx);
@@ -70,7 +83,10 @@ unsigned int RegularGrid::TopNode(double y) const
 {
   double indDouble = (y-yMin)/dy;
   double distToNode = std::abs(std::round(indDouble) - indDouble);
-  if(distToNode<compTol){
+
+  if(y>yMax-compTol){
+    return Ny;
+  }else if(distToNode<compTol){
     return std::round(indDouble);
   }else{
     return std::ceil((y-xMin)/dy);
@@ -82,7 +98,9 @@ unsigned int RegularGrid::LeftNode(double x) const
   double indDouble = (x-xMin)/dx;
   double distToNode = std::abs(std::round(indDouble) - indDouble);
 
-  if(distToNode<compTol){
+  if(x<xMin+compTol){
+    return 0;
+  }else if(distToNode<compTol){
     return std::round(indDouble);
   }else{
     return std::floor((x-xMin)/dx);
@@ -95,7 +113,9 @@ unsigned int RegularGrid::BottomNode(double y) const
   double indDouble = (y-yMin)/dy;
   double distToNode = std::abs(std::round(indDouble) - indDouble);
 
-  if(distToNode<compTol){
+  if(y<yMin+compTol){
+    return 0;
+  }else if(distToNode<compTol){
     return std::round(indDouble);
   }else{
     return std::floor((y-xMin)/dy);

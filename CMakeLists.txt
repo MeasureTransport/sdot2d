@@ -16,6 +16,7 @@ set(LibrarySources
     src/PolygonRasterize.cpp
     src/RegularGrid.cpp
     src/DiscretizedDistribution.cpp
+    src/SemiDiscreteOT.cpp
     )
 
 include_directories(include)

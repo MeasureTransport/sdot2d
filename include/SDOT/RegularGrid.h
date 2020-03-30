@@ -27,6 +27,12 @@ public:
   /** Returns the x coordinate of the left side of the cells containig x. */
   double RightSide(double x) const;
 
+  /** Returns the y coordinate of the bottom side of the cells containig y. */
+  double BottomSide(double y) const;
+
+  /** Returns the y coordinate of the top side of the cells containig y. */
+  double TopSide(double y) const;
+
   /** Returns the index of the node to the left side of the cell containing x.
       If x is within compTol of a node location, that location is returned.
   */

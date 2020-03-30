@@ -35,8 +35,9 @@ PolygonRasterizeIter::PolygonRasterizeIter(std::shared_ptr<RegularGrid> const& g
   std::tie(xInd_begin, maxLeftIndBC, minRightIndBC, xInd_end) = GetXInds(y);
 
   indices = std::make_pair(xInd_begin,yInd);
-  overlapPoly = BoundaryIntersection();
   UpdateCellBounds();
+  overlapPoly = BoundaryIntersection();
+
 
 }
 
@@ -47,6 +48,12 @@ std::tuple<unsigned int, unsigned int, unsigned int, unsigned int> PolygonRaster
   double leftMaxX = -std::numeric_limits<double>::infinity();
   double rightMinX = std::numeric_limits<double>::infinity();
   double rightMaxX = -std::numeric_limits<double>::infinity();
+
+  double leftMinY = CGAL::to_double( edgesCW.front().first->y() );
+  double leftMaxY = CGAL::to_double( edgesCW.back().second->y() );
+
+  double rightMinY = CGAL::to_double( edgesCCW.front().first->y() );
+  double rightMaxY = CGAL::to_double( edgesCCW.back().second->y() );
 
   for(int i=0; i<edgesCW.size(); ++i){
 
@@ -105,7 +112,7 @@ std::tuple<unsigned int, unsigned int, unsigned int, unsigned int> PolygonRaster
     rightMinX = std::min(rightMinX, std::min(x1,x2));
   }
 
-  // std::cout << "y = " << y << ", x bounds = " << minX << ", " << maxX << std::endl;
+  ///std::cout << "y = " << y << ", x bounds = " << minX << ", " << maxX << std::endl;
 
   // round the min and max to nearest grid cell boundaries
   unsigned int leftInd1 = grid->LeftNode(leftMinX);
@@ -115,7 +122,12 @@ std::tuple<unsigned int, unsigned int, unsigned int, unsigned int> PolygonRaster
   leftInd2 = std::max(leftInd1, leftInd2);
   rightInd1 = std::min(rightInd1, rightInd2);
 
-  return std::make_tuple(leftInd1,leftInd2,rightInd1,rightInd2);
+  // If either the CW edges or the CCW edges start or end inside this row
+  if((leftMinY>y+compTol)||(rightMinY>y+compTol)||(leftMaxY<y+grid->dy-compTol)||(rightMaxY<y+grid->dy-compTol)){
+    return std::make_tuple(leftInd1, rightInd2, leftInd2, rightInd2);
+  }else{
+    return std::make_tuple(leftInd1,leftInd2,rightInd1,rightInd2);
+  }
 }
 
 
@@ -404,6 +416,7 @@ void PolygonRasterizeIter::AddCorners(Point_2 const& nextPt, std::vector<Point_2
 std::shared_ptr<PolygonRasterizeIter::Polygon_2> PolygonRasterizeIter::BoundaryIntersection()
 {
 
+  //std::cout << "(i,j) = " << indices.first << "," << indices.second << std::endl;
   //std::cout << "Bounds = (" << xleft << "," << ybot << ") -> (" << xright << "," << ytop << ")" << std::endl;
 
   // The edgesCW and edgesCCW containers contain edges that could overlap with
@@ -625,6 +638,7 @@ PolygonRasterizeIter& PolygonRasterizeIter::Increment()
 
     unsigned int xInd_begin;
     std::tie(xInd_begin, maxLeftIndBC, minRightIndBC, xInd_end) = GetXInds(y);
+    //std::cout << "Important xs = " << xInd_begin << ", " << maxLeftIndBC << ", " << minRightIndBC << ", " << xInd_end << std::endl;
 
     if(xInd_end<xInd_begin){
       isValid=false;
@@ -632,15 +646,16 @@ PolygonRasterizeIter& PolygonRasterizeIter::Increment()
     }
 
     indices = std::make_pair(xInd_begin, yInd);
+
     UpdateCellBounds();
   }
-
 
   if((indices.first<=maxLeftIndBC)||(indices.first>=minRightIndBC)){
     overlapPoly = BoundaryIntersection();
   }else{
     overlapPoly = nullptr;
   }
+
   return *this;
 };
 
