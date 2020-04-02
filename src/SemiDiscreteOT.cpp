@@ -1,5 +1,7 @@
 #include "SDOT/SemidiscreteOT.h"
 
+#include <CGAL/Kernel/global_functions.h>
+
 #include <algorithm>
 
 using namespace sdot;
@@ -12,11 +14,15 @@ SemidiscreteOT::SemidiscreteOT(std::shared_ptr<Distribution2d> const& distIn,
                                                                                       discrPts(discrPtsIn),
                                                                                       discrProbs(discrProbsIn)
 {
-  // domain.resize(2,4);
-  // domain << grid->xMin, grid->xMax, grid->xMax, grid->xMin,
-  //           grid->yMin, grid->yMin, grid->yMax, grid->yMax;
-
   assert(discrPtsIn.cols()==discrProbsIn.size());
+
+  // Check to make suare all the points are inside the grid domain
+  for(unsigned int i=0; i<discrPts.cols(); ++i){
+    assert(discrPts(0,i)>=grid->xMin);
+    assert(discrPts(0,i)<=grid->xMax);
+    assert(discrPts(1,i)>=grid->yMin);
+    assert(discrPts(1,i)<=grid->yMax);
+  }
 }
 
 std::tuple<double,Eigen::VectorXd, Eigen::SparseMatrix<double>> SemidiscreteOT::Objective(Eigen::VectorXd const& prices) const
@@ -51,18 +57,19 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT::ComputeGradient(Eigen::VectorX
  Eigen::VectorXd objParts(numCells);
  Eigen::VectorXd gradient(numCells);
 
- //double totalArea = 0.0;
+ double weightedArea = 0.0;
+ //Eigen::MatrixXd cellAreas = Eigen::MatrixXd::Zero(grid->Nx, grid->Ny);
 
  for(int cellInd=0; cellInd<numCells; ++cellInd){
 
-   //double lagCellArea = 0.0;
+   // std::cout << "Laguerre cell " << cellInd << std::endl;
+   double lagCellArea = 0.0;
 
    objParts(cellInd) = prices(cellInd)*discrProbs(cellInd);
    gradient(cellInd) = discrProbs(cellInd);
 
    // Loop over the grid cells in this Laguerre cell
    auto lagCell = lagDiag.GetCell(cellInd);
-
    PolygonRasterizeIter gridIter(grid,lagCell);
 
    unsigned int xInd, yInd;
@@ -77,12 +84,15 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT::ComputeGradient(Eigen::VectorX
      gridCellDens = dist->Density(xInd,yInd);
 
 
-     //double interArea = 0.0;
+     double interArea = 0.0;
+     //double interObj = 0.0;
+
      if(gridIter.IsBoundary()){
 
 
        // Break the intersection polygon into triangles and add contributions from each triangle
        std::shared_ptr<PolygonRasterizeIter::Polygon_2> overlapPoly = gridIter.OverlapPoly();
+       //std::cout << "   Cell " << cellInd << " = " << *overlapPoly << std::endl;
 
        auto beginVert = overlapPoly->vertices_begin();
        auto vert1 = beginVert;
@@ -93,7 +103,7 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT::ComputeGradient(Eigen::VectorX
        x1 = CGAL::to_double( beginVert->x() );
        y1 = CGAL::to_double( beginVert->y() );
 
-       //interArea = CGAL::to_double( overlapPoly->area() );
+       //interArea = gridCellDens*CGAL::to_double( overlapPoly->area() );
 
        for(; vert2!=overlapPoly->vertices_end(); vert2++, vert1++)
        {
@@ -102,38 +112,48 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT::ComputeGradient(Eigen::VectorX
          x3 = CGAL::to_double( vert2->x() );
          y3 = CGAL::to_double( vert2->y() );
 
+         double triArea = 0.5*std::abs((x2*y1-x1*y2)+(x3*y2-x2*y3)+(x1*y3-x3*y1));
 
-         objParts(cellInd) += gridCellDens * TriangleIntegral(x1,                  y1,
+         // std::cout << "     Triangle (" << x1 << "," << y1 << ")->(" << x2 << "," << y2 << ")->(" << x3 << "," << y3 << ")" << std::endl;
+         objParts(cellInd) += gridCellDens * (TriangleIntegral(x1,                  y1,
                                                               x2,                  y2,
                                                               x3,                  y3,
-                                                              discrPts(0,cellInd), discrPts(1,cellInd));
+                                                              discrPts(0,cellInd), discrPts(1,cellInd))
+                                              - triArea*prices(cellInd));
 
-         // gridCellDense * triArea, where triArea=0.5*std::abs((x2*y1-x1*y2)+(x3*y2-x2*y3)+(x1*y3-x3*y1))
-         double triArea = std::abs((x2*y1-x1*y2)+(x3*y2-x2*y3)+(x1*y3-x3*y1));
-         //interArea += triArea;
-         objParts(cellInd) -= gridCellDens*triArea*prices(cellInd);
+         // std::cout << "      Objective part = " << gridCellDens * (TriangleIntegral(x1,                  y1,
+         //                                                      x2,                  y2,
+         //                                                      x3,                  y3,
+         //                                                      discrPts(0,cellInd), discrPts(1,cellInd))
+         //                                      - triArea*prices(cellInd)) << std::endl;
+         // // gridCellDense * triArea, where triArea=0.5*std::abs((x2*y1-x1*y2)+(x3*y2-x2*y3)+(x1*y3-x3*y1))
+
+         interArea += gridCellDens*triArea;
          gradient(cellInd) -= gridCellDens*triArea;
        }
 
      }else{
-       //interArea += grid->dx*grid->dy;
+       interArea += gridCellDens*grid->dx*grid->dy;
 
-       objParts(cellInd) -= gridCellDens*grid->dx*grid->dy;
-       objParts(cellInd) += gridCellDens*SquareIntegral(gridIter.LeftX(),    gridIter.RightX(),
-                                                         gridIter.BottomY(),  gridIter.TopY(),
-                                                         discrPts(0,cellInd), discrPts(1,cellInd));
+       objParts(cellInd) += gridCellDens*(SquareIntegral(gridIter.Cell()->xMin,  gridIter.Cell()->xMax,
+                                                         gridIter.Cell()->yMin,  gridIter.Cell()->yMax,
+                                                         discrPts(0,cellInd), discrPts(1,cellInd))
+                            - prices(cellInd)*grid->dx*grid->dy);
 
        // gridCellDens * rectArea, where rectArea = grid->dx*grid->dy
        gradient(cellInd) -= gridCellDens*grid->dx*grid->dy;
      }
 
-     //lagCellArea += interArea;
+     lagCellArea += interArea;
 
      gridIter.Increment();
    }
 
-   //totalArea += lagCellArea;
+   //std::cout << "   Cell " << cellInd <<  " has weighted area = " << lagCellArea << std::endl;
+   weightedArea += lagCellArea;
  }
+
+ assert(std::abs(weightedArea-1.0)<1e-12);
 
  return std::make_pair(objParts.sum(), gradient);
 }
@@ -141,7 +161,7 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT::ComputeGradient(Eigen::VectorX
 double SemidiscreteOT::LineIntegral(LaguerreDiagram::Point_2 const& srcPt,
                                     LaguerreDiagram::Point_2 const& tgtPt) const
 {
-  const double compTol = 1e-14;
+  const double compTol = 1e-11;
 
   double xs = CGAL::to_double(srcPt.x());
   double ys = CGAL::to_double(srcPt.y());
@@ -165,15 +185,19 @@ double SemidiscreteOT::LineIntegral(LaguerreDiagram::Point_2 const& srcPt,
     double currY = CGAL::to_double( ys );
     double nextY = grid->TopNode(ys);
 
-    while(nextY<maxY){
-      val += (nextY-currY);//*dist->Density(xInd,yInd);
+    // If the source point is on a boundary...
+    if(std::abs(nextY-currY)<compTol)
+      nextY += grid->dy;
+
+    while(nextY<maxY-compTol){
+      val += (nextY-currY)*dist->Density(xInd,yInd);
 
       yInd++;
       currY = nextY;
       nextY = currY+grid->dy;
     }
 
-    val += (maxY-currY);//*dist->Density(xInd,yInd);
+    val += (maxY-currY)*dist->Density(xInd,yInd);
 
     return val;
 
@@ -195,15 +219,19 @@ double SemidiscreteOT::LineIntegral(LaguerreDiagram::Point_2 const& srcPt,
     double currX = CGAL::to_double( xs );
     double nextX = grid->RightNode(xs);
 
-    while(nextX<maxX){
-      val += (nextX-currX);//*dist->Density(xInd,yInd);
+    // If the source is on a boundary...
+    if(std::abs(nextX-currX)<compTol)
+      nextX += grid->dx;
+
+    while(nextX<maxX-compTol){
+      val += (nextX-currX)*dist->Density(xInd,yInd);
 
       xInd++;
       currX = nextX;
       nextX = currX+grid->dx;
     }
 
-    val += (maxX-currX);//*dist->Density(xInd,yInd);
+    val += (maxX-currX)*dist->Density(xInd,yInd);
 
     return val;
 
@@ -244,15 +272,23 @@ double SemidiscreteOT::LineIntegral(LaguerreDiagram::Point_2 const& srcPt,
     unsigned int xInd = grid->LeftNode(xs);
     unsigned int yInd = grid->BottomNode(ys);
 
+    // Handle situations where the source starts on a boundary
+    if(std::abs(yInd*grid->dy+grid->yMin - ys)<compTol){
+      if(yt<ys-compTol){
+        yInd--;
+      }
+    }
+
     nextt_vert = std::min(1.0, ( (xInd+1)*grid->dx + grid->xMin - xs) / dx);
 
     if(posSlope){
-      nextt_horz = std::min(1.0, ( (yInd+1)*grid->dy + grid->yMin - ys) / dy);
+      nextt_horz = std::min(1.0, ( (yInd+1.0)*grid->dy + grid->yMin - ys) / dy);
     }else{
-      nextt_horz = std::min(1.0, ( (yInd-1)*grid->dy + grid->yMin - ys) / dy);
+      nextt_horz = std::min(1.0, ( yInd*grid->dy + grid->yMin - ys) / dy);
     }
 
     nextt = std::min(nextt_horz,nextt_vert);
+
 
     while(nextt<1.0-compTol){
       val += (nextt-currt)*segLenth*dist->Density(xInd,yInd);
@@ -278,8 +314,6 @@ double SemidiscreteOT::LineIntegral(LaguerreDiagram::Point_2 const& srcPt,
       currt = nextt;
       nextt = std::min(nextt_horz,nextt_vert);
     }
-
-
     if((xInd<grid->NumCells(0))&&(yInd<grid->NumCells(1)))
       val += (nextt-currt)*segLenth*dist->Density(xInd,yInd);
 
@@ -300,7 +334,6 @@ Eigen::SparseMatrix<double> SemidiscreteOT::ComputeHessian(LaguerreDiagram const
 
   // Hold the i,j,val triplets defining the sparse Hessian
   std::vector<T> hessVals;
-  hessVals.push_back(T(0.0,0.0,1e8));
 
   double intVal;
   unsigned int cellInd2;
@@ -311,22 +344,12 @@ Eigen::SparseMatrix<double> SemidiscreteOT::ComputeHessian(LaguerreDiagram const
       std::tie(cellInd2, srcPt, tgtPt) = edgeTuple;
 
       // Compute the integral of the target density along the edge
-      intVal = LineIntegral(srcPt,tgtPt)/(discrPts.col(cellInd1)-discrPts.col(cellInd2)).norm();
+      intVal = 0.25*LineIntegral(srcPt,tgtPt)/(discrPts.col(cellInd1)-discrPts.col(cellInd2)).norm();
 
       diagVals(cellInd1) -= intVal;
       hessVals.push_back(T(cellInd1,cellInd2,intVal));
     }
   }
-
-  //
-  // // Get a pointer to the underlying CGAL PowerDiagram so we can access the half edges
-  // LaguerreDiagram::PowerDiagram* baseDiag = lagDiag.BaseDiagram();
-  //
-  // // Loop over all the half edges in the power diagram
-  // for(auto edge = baseDiag->halfedges_begin(); edge!=baseDiag->halfedges_end(); ++edge){
-  //
-  //
-  // }
 
   for(int i=0; i<numCells; ++i)
     hessVals.push_back(T(i,i,diagVals(i)));
@@ -356,4 +379,222 @@ double SemidiscreteOT::TriangleIntegral(double x1, double y1,
  triInt *= 0.5*((x2-x1)*(y3-y1) - (x3-x1)*(y2-y1));
 
  return triInt;
+}
+
+
+std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd const& prices0)
+{
+  // Trust region approach with a double dogleg step
+  double trustRadius = 1.0;
+  const unsigned int maxEvals = 500;
+  const unsigned int printLevel =  2;
+  const double xtol_abs = 1e-6;
+  const double ftol_abs = 1e-11;
+  const double acceptRatio = 1e-4;//0.1;
+
+  const double shrinkRatio = 1e-4;//0.1;
+  const double growRatio = 0.75;
+  const double growRate = 2.0;
+  const double shrinkRate = 0.25;
+  const double maxRadius = 10;
+
+  assert(prices0.size()==discrPts.cols());
+  const unsigned int dim = prices0.size();
+
+  double fval, newF, gradNorm, newGradNorm;
+  Eigen::VectorXd grad, newGrad;
+  Eigen::SparseMatrix<double> hess;
+
+  Eigen::VectorXd x = prices0;
+  Eigen::VectorXd newX;
+  Eigen::VectorXd step = Eigen::VectorXd::Zero(dim);
+
+  std::shared_ptr<LaguerreDiagram> newLagDiag;
+
+  // Compute an initial gradient and Hessian
+  lagDiag  = std::make_shared<LaguerreDiagram>(grid->xMin, grid->xMax, grid->yMin, grid->yMax, discrPts, x);
+  std::tie(fval, grad) = ComputeGradient(x, *lagDiag);
+
+  fval *= -1.0;
+  grad *= -1.0;
+  gradNorm = grad.norm();
+
+  if(printLevel>0){
+    std::cout << "Using NewtonTrust optimizer..." << std::endl;
+    std::cout << "  Iteration, TrustRadius,       ||g||" << std::endl;
+  }
+
+  for(int it=0; it<maxEvals; ++it) {
+
+    hess = ComputeHessian(*lagDiag);
+    hess *= -1.0;
+
+    if(printLevel>0){
+      std::printf("  %9d, %11.3f,  %5.3e\n", it, trustRadius, grad.norm());
+    }
+
+    if(gradNorm < xtol_abs){
+      if(printLevel>0){
+        std::printf("Terminating because gradient norm (%4.2e) is smaller than xtol_abs (%4.2e).\n", gradNorm, xtol_abs);
+      }
+      return std::make_pair(x,fval);
+    }
+
+    step.tail(dim-1) = SolveSubProblem(fval, grad.tail(dim-1),  hess.block(1,1,dim-1,dim-1), trustRadius);
+
+    newX = x+step;
+
+    // Try constructing the new Laguerre diagram.  If we can't then shrink the trust region size
+    try{
+      newLagDiag  = std::make_shared<LaguerreDiagram>(grid->xMin, grid->xMax, grid->yMin, grid->yMax, discrPts, newX);
+
+      std::tie(newF, newGrad) = ComputeGradient(newX, *newLagDiag);
+      newF *= -1.0;
+      newGrad *= -1.0;
+
+      newGradNorm = newGrad.norm();
+
+      // Use the quadratic submodel to predict the change in the gradient norm
+      double modDelta = gradNorm - (grad + hess.selfadjointView<Eigen::Lower>()*step).norm();
+      double trueDelta = gradNorm - newGradNorm;
+
+      double rho = trueDelta/modDelta;
+      // std::cout << "          step.dot(grad) = " << step.dot(grad) << std::endl;
+      // std::cout << "          delta f = " << trueDelta << std::endl;
+      // std::cout << "          modDelta = " << modDelta << std::endl;
+      // std::cout << "          New prices = " << newX.transpose() << std::endl;
+      // std::cout << "          rho = " << rho << std::endl;
+
+      double stepNorm = step.norm();
+      if(stepNorm < xtol_abs){
+        if(printLevel>0){
+          std::printf("Terminating because stepsize (%4.2e) is smaller than xtol_abs (%4.2e).\n", stepNorm, xtol_abs);
+        }
+        return std::make_pair(newX,newF);
+      }
+
+      // Update the position.  If the model is really bad, we'll just stay put
+      if(rho>acceptRatio){
+
+        if(std::abs(fval-newF)<ftol_abs){
+          if(printLevel>0){
+            std::printf("Terminating because change in objective (%4.2e) is smaller than ftol_abs (%4.2e).\n", fval-newF, ftol_abs);
+          }
+          return std::make_pair(newX,newF);
+        }
+
+        x = newX;
+        fval = newF;
+        lagDiag = newLagDiag;
+        grad = newGrad;
+        gradNorm = newGradNorm;
+      }
+
+      // Update the trust region size
+      if(rho<shrinkRatio){
+        trustRadius = shrinkRate*trustRadius; // shrink trust region
+
+        if(printLevel>1)
+          std::cout << "            Shrinking trust region because of submodel accuracy." << std::endl;
+
+      }else if((rho>growRatio)&&(std::abs(step.norm()-trustRadius)<1e-10)) {
+        trustRadius = std::min(growRate*trustRadius, maxRadius);
+
+        if(printLevel>1)
+          std::cout << "            Growing trust region." << std::endl;
+
+      }
+
+    }catch(LaguerreDiagram::ConstructionException& e){
+      trustRadius = shrinkRate*trustRadius;
+
+      if(printLevel>1)
+        std::cout << "            Shrinking trust region because of degenerate Laguerre diagram." << std::endl;
+    }
+  }
+
+  if(printLevel>0){
+    std::printf("Terminating because maximum number of iterations (%d) was reached.", maxEvals);
+  }
+  return std::make_pair(x,fval);
+}
+
+
+Eigen::VectorXd SemidiscreteOT::SolveSubProblem(double obj,
+                                                Eigen::Ref<const Eigen::VectorXd> const& grad,
+                                                Eigen::Ref<const Eigen::SparseMatrix<double>> const& hess,
+                                                double trustRadius) const
+{
+  const double trustTol = 1e-10;
+  const unsigned int dim = grad.size();
+
+  // Current estimate of the subproblem minimum
+  Eigen::VectorXd z = Eigen::VectorXd::Zero(dim);
+
+  // Related to the step direction
+  Eigen::VectorXd r = grad;
+  Eigen::VectorXd d = -r;
+
+  // If the gradient is small enough where we're starting, then we're done
+  if(r.norm()<trustTol){
+    return z;
+  }
+
+  Eigen::VectorXd Bd; // the Hessian (B) applied to a vector d
+
+  double alpha, beta, gradd, dBd, rr;
+
+  for(int i=0; i<dim; ++i){
+    Bd = hess.selfadjointView<Eigen::Lower>()*d;
+    gradd = grad.dot(d);
+    dBd = d.dot(Bd);
+    rr = r.squaredNorm();
+
+    // If the Hessian isn't positive definite in this direction, we can go all
+    // the way to the trust region boundary
+    if(dBd<=0){
+      // do something
+
+      double dz = d.dot(z);
+      double dd = d.squaredNorm();
+      double zz = z.squaredNorm();
+      double r2 = trustRadius*trustRadius;
+
+      double tau1 = (-dz + sqrt(dz*dz - dd*(zz-r2)))/dd;
+      double tau2 = (-dz - sqrt(dz*dz - dd*(zz-r2)))/dd;
+
+      double zBd = z.dot(Bd);
+      double mval1 = tau1*gradd + tau1*zBd + tau1*tau1*dBd;
+      double mval2 = tau2*gradd + tau2*zBd + tau2*tau2*dBd;
+
+      return (mval1<mval2) ? (z+tau1*d) : (z+tau2*d);
+    }
+
+    alpha = rr / dBd;
+    Eigen::VectorXd newZ = z + alpha * d;
+
+    if(newZ.norm()>trustRadius){
+
+      double dz = d.dot(z);
+      double dd = d.squaredNorm();
+      double zz = z.squaredNorm();
+      double r2 = trustRadius*trustRadius;
+
+      double tau = (-dz + sqrt(dz*dz - dd*(zz-r2)))/dd;
+      return z + tau*d;
+    }
+
+    z = newZ;
+
+    r += alpha*Bd;
+
+    if(r.norm()<trustTol){
+      return z;
+    }
+
+    beta = r.squaredNorm() / rr;
+    d = (-r + beta*d).eval();
+  }
+
+  return z;
 }

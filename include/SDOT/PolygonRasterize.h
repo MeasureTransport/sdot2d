@@ -1,7 +1,8 @@
 #ifndef POLYGONRASTERIZE_H_
 #define POLYGONRASTERIZE_H_
 
-#include "RegularGrid.h"
+#include "SDOT/RegularGrid.h"
+#include "SDOT/BoundingBox.h"
 
 #include <vector>
 #include <memory>
@@ -14,7 +15,7 @@
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 
 #include <CGAL/Polygon_2.h>
-//#include <CGAL/Polygon_with_holes_2.h>
+#include <CGAL/Polygon_with_holes_2.h>
 #include <CGAL/number_utils.h>
 
 
@@ -30,7 +31,7 @@ namespace sdot {
       typedef K::Point_2                    Point_2;
       typedef K::Vector_2                   Vector_2;
       typedef CGAL::Polygon_2<K>            Polygon_2;
-      //typedef CGAL::Polygon_with_holes_2<K> Polygon_with_holes_2;
+      typedef CGAL::Polygon_with_holes_2<K> Polygon_with_holes_2;
       typedef std::pair<Polygon_2::Vertex_const_iterator,Polygon_2::Vertex_const_iterator> PolygonEdge;
 
       enum Direction{
@@ -65,11 +66,8 @@ namespace sdot {
       /** Returns a polygon containing the current grid clipped to the polygon. */
       std::shared_ptr<Polygon_2> const& OverlapPoly() const{return overlapPoly;};
 
-      double LeftX() const{return xleft;};
-      double RightX() const{return xright;};
-      double BottomY() const{return ybot;};
-      double TopY() const{return ytop;};
-      
+      std::shared_ptr<BoundingBox> const& Cell() const{return cellBox;};
+
     private:
 
       const double compTol = 1e-14;
@@ -83,10 +81,7 @@ namespace sdot {
       std::pair<int,int> indices;
 
       // The following doubles hold the bounds of the current grid cell
-      double xleft;
-      double xright;
-      double ybot;
-      double ytop;
+      std::shared_ptr<BoundingBox> cellBox;
 
       std::shared_ptr<RegularGrid> grid;
       std::shared_ptr<Polygon_2> poly;
@@ -154,8 +149,8 @@ namespace sdot {
            point would be considered outside the grid cell and it would be returned
            as an exit point.
        */
-       std::pair<std::shared_ptr<Point_2>, std::shared_ptr<Point_2>> EdgeCrossings(PolygonEdge const& edge,
-                                                                                   bool               includeEdges);
+       // std::pair<std::shared_ptr<Point_2>, std::shared_ptr<Point_2>> EdgeCrossings(PolygonEdge const& edge,
+       //                                                                             bool               includeEdges);
 
 
        /** Given two intersection points on the boundary of the current grid cell, this function

@@ -14,6 +14,7 @@
 #include <CGAL/Polygon_with_holes_2.h>
 #include <CGAL/Triangulation_vertex_base_with_info_2.h>
 
+#include "SDOT/BoundingBox.h"
 
 namespace sdot{
 
@@ -38,8 +39,8 @@ public:
 
 //  typedef CGAL::Regular_triangulation_2<K, Tds>                       DT;
   typedef CGAL::Regular_triangulation_adaptation_traits_2<DT>         AT;
-  typedef CGAL::Regular_triangulation_degeneracy_removal_policy_2<DT> AP;
-  typedef CGAL::Voronoi_diagram_2<DT,AT,AP>                           PowerDiagram;
+  //typedef CGAL::Regular_triangulation_degeneracy_removal_policy_2<DT> AP;
+  typedef CGAL::Voronoi_diagram_2<DT,AT>                           PowerDiagram;
 
   // typedef for the result type of the point location
   typedef AT::Site_2                    Site_2;
@@ -81,10 +82,15 @@ public:
 
   PowerDiagram* BaseDiagram(){return &unboundedDiagram;};
 
+  struct ConstructionException : public std::runtime_error
+  {
+    ConstructionException(std::string msg) : std::runtime_error(msg.c_str()){};
+  };
+
 private:
 
   const double compTol = 1e-14;
-  
+
   void CreateBoundaryPolygon(Eigen::Matrix2Xd const& bndryPts);
 
   void CreateUnboundedDiagram(Eigen::Matrix2Xd const& pts,
@@ -94,11 +100,15 @@ private:
 
   std::shared_ptr<Polygon_2> BoundOneCell(PowerDiagram::Face_handle const& face);
 
-  /** Clips the edge in the Voronoi diagram to the bounding box.
-  */
-  bool ClipToBoundary(Point_2& srcPt, Point_2& tgtPt) const;
-
   void AddInternalEdges(PowerDiagram::Face_handle const& face);
+
+  /** Returns true if the halfEdge has a source node inside the bounding box.
+  */
+  bool HasInternalSource(Ccb_halfedge_circulator halfEdge) const;
+
+  /** Returns true if the halfEdge has a target node inside the bounding box.
+  */
+  bool HasInternalTarget(Ccb_halfedge_circulator halfEdge) const;
 
   /// The number of points used to construct the Laguere diagram.
   int numPts;
@@ -107,8 +117,9 @@ private:
   std::vector<std::shared_ptr<Polygon_2>> laguerreCells;
 
   /// Stores a polygon defining the bounds of the domain of interest
-  double xBndLeft, xBndRight, yBndBottom, yBndTop;
-  Polygon_2 boundPoly;
+  BoundingBox bbox;
+  // double xBndLeft, xBndRight, yBndBottom, yBndTop;
+//  Polygon_2 boundPoly;
 
   /// Stores the unbounded polygon created by CGAL
   PowerDiagram unboundedDiagram;

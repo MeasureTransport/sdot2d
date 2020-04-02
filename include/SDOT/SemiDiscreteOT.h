@@ -32,7 +32,27 @@ namespace sdot{
     */
     std::tuple<double, Eigen::VectorXd, Eigen::SparseMatrix<double>> Objective(Eigen::VectorXd const& prices) const;
 
+
+    /** Solves the dual OT problem for the prices.  Uses a Trust region newton method.
+    */
+    std::pair<Eigen::VectorXd, double> Solve(Eigen::VectorXd const& prices0);
+
+    std::shared_ptr<LaguerreDiagram> Diagram() const{return lagDiag;}
+
   private:
+
+    /** Solves the trust region subproblem using a Steihaug-CG approach.
+        @param[in] obj The current value of the objective.
+        @param[in] grad A view of the gradient with  one of the components removed to make the solution unique.
+        @param[in] hess A view of the Hessian with one component  removed.
+        @param[in] trustRadius The current trust region radius.
+        @return A vector holding the optimization step.
+    */
+    Eigen::VectorXd SolveSubProblem(double obj,
+                                    Eigen::Ref<const Eigen::VectorXd> const& grad,
+                                    Eigen::Ref<const Eigen::SparseMatrix<double>> const& hess,
+                                    double trustRadius) const;
+
 
     std::shared_ptr<Distribution2d> dist;
     std::shared_ptr<RegularGrid> grid;
@@ -41,6 +61,9 @@ namespace sdot{
     Eigen::VectorXd  discrProbs;
 
     Eigen::Matrix2Xd domain; // <- Points defining a polygon surrounding the domain of interest
+
+    // The most recently constructed Laguerre diagram
+    std::shared_ptr<LaguerreDiagram> lagDiag;
 
     /** Given an existing Laguerre diagram, this function computes the objective
         and gradient by integrating over each Laguerre cell.

@@ -8,10 +8,11 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Set c++ compiler flags
-set(CMAKE_CXX_FLAGS "-O2")
+set(CMAKE_CXX_FLAGS "-O2 -std=c++11")
 
 # Set the source files
 set(LibrarySources
+    src/BoundingBox.cpp
     src/LaguerreDiagram.cpp
     src/PolygonRasterize.cpp
     src/RegularGrid.cpp

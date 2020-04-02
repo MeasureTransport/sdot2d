@@ -1,5 +1,7 @@
 #include "SDOT/PolygonRasterize.h"
 
+#include <CGAL/Boolean_set_operations_2.h>
+
 using namespace sdot;
 
 
@@ -112,7 +114,7 @@ std::tuple<unsigned int, unsigned int, unsigned int, unsigned int> PolygonRaster
     rightMinX = std::min(rightMinX, std::min(x1,x2));
   }
 
-  ///std::cout << "y = " << y << ", x bounds = " << minX << ", " << maxX << std::endl;
+//  std::cout << "y = " << y << ", x bounds = " << leftMinX << ", " << rightMaxX << std::endl;
 
   // round the min and max to nearest grid cell boundaries
   unsigned int leftInd1 = grid->LeftNode(leftMinX);
@@ -187,424 +189,455 @@ void PolygonRasterizeIter::UpdateEdges(unsigned int yInd)
 
 void PolygonRasterizeIter::UpdateCellBounds()
 {
-  xleft = indices.first * grid->dx + grid->xMin;
-  xright = xleft + grid->dx;
-  ybot = indices.second * grid->dy + grid->yMin;
-  ytop = ybot + grid->dy;
+  cellBox = std::make_shared<BoundingBox>(indices.first * grid->dx + grid->xMin,
+                                          (indices.first+1) * grid->dx + grid->xMin,
+                                          indices.second * grid->dy + grid->yMin,
+                                          (indices.second+1) * grid->dy + grid->yMin);
 }
 
-std::pair<std::shared_ptr<PolygonRasterizeIter::Point_2>,
-          std::shared_ptr<PolygonRasterizeIter::Point_2>> PolygonRasterizeIter::EdgeCrossings(PolygonEdge const& edge,
-                                                                                              bool includeEdges)
-{
-  // locations of the source and target vertices of the edge
-  double tx = CGAL::to_double( edge.second->x() );
-  double ty = CGAL::to_double( edge.second->y() );
-  double sx = CGAL::to_double( edge.first->x() );
-  double sy = CGAL::to_double( edge.first->y() );
+// std::pair<std::shared_ptr<PolygonRasterizeIter::Point_2>,
+//           std::shared_ptr<PolygonRasterizeIter::Point_2>> PolygonRasterizeIter::EdgeCrossings(PolygonEdge const& edge,
+//                                                                                               bool includeEdges)
+// {
+//   // locations of the source and target vertices of the edge
+//   double tx = CGAL::to_double( edge.second->x() );
+//   double ty = CGAL::to_double( edge.second->y() );
+//   double sx = CGAL::to_double( edge.first->x() );
+//   double sy = CGAL::to_double( edge.first->y() );
+//
+//   std::shared_ptr<Point_2> enterPt, exitPt;
+//
+//   double enterX, enterY;
+//   double exitX, exitY;
+//
+//   // The edge is entirely to the left or entirely to the right of the grid cell
+//   if(includeEdges){
+//     if(((tx>xright+compTol)&&(sx>xright+compTol))||((tx<xleft-compTol)&&(sx<xleft-compTol))){
+//       enterPt=nullptr;
+//       exitPt=nullptr;
+//       return std::make_pair(enterPt, exitPt);
+//     }
+//   }else{
+//     if(((tx>xright-compTol)&&(sx>xright-compTol))||((tx<xleft+compTol)&&(sx<xleft+compTol))){
+//       enterPt=nullptr;
+//       exitPt=nullptr;
+//       return std::make_pair(enterPt, exitPt);
+//     }
+//   }
+//
+//   // The edge is entirely above or below the grid cell
+//   if(includeEdges){
+//     if(((ty>ytop+compTol)&&(sy>ytop+compTol))||((ty<ybot-compTol)&&(sy<ybot-compTol))){
+//       enterPt=nullptr;
+//       exitPt=nullptr;
+//       return std::make_pair(enterPt, exitPt);
+//     }
+//   }else{
+//     if(((ty>ytop-compTol)&&(sy>ytop-compTol))||((ty<ybot+compTol)&&(sy<ybot+compTol))){
+//       enterPt=nullptr;
+//       exitPt=nullptr;
+//       return std::make_pair(enterPt, exitPt);
+//     }
+//   }
+//
+//   // If it's vertical...
+//   if(std::abs(tx-sx)<horizTol){
+//
+//     // if it overlaps the boundary exactly
+//     if((tx<xleft+compTol)||(tx > xright-compTol)){
+//       enterPt=nullptr;
+//       exitPt=nullptr;
+//       return std::make_pair(enterPt, exitPt);
+//     }
+//
+//     enterX = sx;
+//     exitX = sx;
+//     if(sy>ty){
+//       enterY = ytop;
+//       exitY = ybot;
+//     }else{
+//       enterY = ybot;
+//       exitY = ytop;
+//     }
+//
+//   // If it's horizontal
+//   }else if(std::abs(ty-sy)<horizTol){
+//
+//     // if it doesn't intersect the grid cell
+//     if((ty<ybot+compTol)||(ty>ytop-compTol)){
+//       enterPt=nullptr;
+//       exitPt=nullptr;
+//       return std::make_pair(enterPt, exitPt);
+//     }
+//
+//     enterY = sy;
+//     exitY = sy;
+//     if(tx<sx){ // leave left side
+//       enterX = xright;
+//       exitX = xleft;
+//
+//     }else{ // leave right side
+//       enterX = xleft;
+//       exitX = xright;
+//     }
+//
+//   // If it's not vertical or horizontal...
+//   }else{
+//
+//     double slope = (ty-sy)/(tx-sx);
+//
+//     // If slope is positive, an intersection will only occur if the bottom right point is below the line segment.
+//     if(slope>0){
+//
+//       if((ybot > sy + slope*(xright-sx)-compTol)||(ytop < sy + slope*(xleft-sx)+compTol)){
+//         enterPt=nullptr;
+//         exitPt=nullptr;
+//         return std::make_pair(enterPt, exitPt);
+//       }
+//
+//     // Similarly, if the slope is negative, an intersection will only occur if the bottom left point is below the line segment.
+//     }else if(slope<0){
+//       if((ybot > sy + slope*(xleft-sx)-compTol)||(ytop < sy + slope*(xright-sx)+compTol)){
+//         enterPt=nullptr;
+//         exitPt=nullptr;
+//         return std::make_pair(enterPt, exitPt);
+//       }
+//
+//     }else{
+//       std::cerr << "I shouldn't be here...  The slop should always be nonzero at this stage." << std::endl;
+//       assert(slope!=0);
+//     }
+//
+//     // could enter from left and exit from right
+//     if(tx>sx){
+//       enterY = std::min(ytop, std::max(ybot, sy + slope*(xleft-sx)));
+//       exitY = std::min(ytop, std::max(ybot, sy + slope*(xright-sx)));
+//
+//     // could enter from right and exit from left
+//     }else{
+//       enterY = std::min(ytop, std::max(ybot, sy + slope*(xright-sx)));
+//       exitY = std::min(ytop, std::max(ybot, sy+slope*(xleft-sx)));
+//     }
+//
+//     // Could enter from top and leave from bottom
+//     if(ty<sy){
+//       enterX = std::min(xright, std::max(xleft, sx + (ytop-sy)/slope));
+//       exitX = std::min(xright, std::max(xleft, sx + (ybot-sy)/slope));
+//
+//     // Could enter from bottom and leave from top
+//     }else{
+//       enterX = std::min(xright, std::max(xleft, sx + (ybot-sy)/slope));
+//       exitX = std::min(xright, std::max(xleft, sx + (ytop-sy)/slope));
+//     }
+//
+//   }
+//
+//   bool srcIsInside, tgtIsInside;
+//
+//   if(includeEdges){
+//     srcIsInside = (sx>xleft-compTol)&&(sx<xright+compTol)&&(sy>ybot-compTol)&&(sy<ytop+compTol);
+//     tgtIsInside = (tx>xleft-compTol)&&(tx<xright+compTol)&&(ty>ybot-compTol)&&(ty<ytop+compTol);
+//   }else{
+//     srcIsInside = (sx>xleft+compTol)&&(sx<xright-compTol)&&(sy>ybot+compTol)&&(sy<ytop-compTol);
+//     tgtIsInside = (tx>xleft+compTol)&&(tx<xright-compTol)&&(ty>ybot+compTol)&&(ty<ytop-compTol);
+//   }
+//
+//   if(tgtIsInside){
+//     exitPt = nullptr;
+//   }else{
+//     exitPt = std::make_shared<Point_2>(exitX,exitY);
+//   }
+//
+//   if(srcIsInside){
+//     enterPt = nullptr;
+//   }else{
+//     enterPt = std::make_shared<Point_2>(enterX,enterY);
+//   }
+//
+//   return std::make_pair(enterPt, exitPt);
+// }
 
-  std::shared_ptr<Point_2> enterPt, exitPt;
 
-  double enterX, enterY;
-  double exitX, exitY;
-
-  // The edge is entirely to the left or entirely to the right of the grid cell
-  if(includeEdges){
-    if(((tx>xright+compTol)&&(sx>xright+compTol))||((tx<xleft-compTol)&&(sx<xleft-compTol))){
-      enterPt=nullptr;
-      exitPt=nullptr;
-      return std::make_pair(enterPt, exitPt);
-    }
-  }else{
-    if(((tx>xright-compTol)&&(sx>xright-compTol))||((tx<xleft+compTol)&&(sx<xleft+compTol))){
-      enterPt=nullptr;
-      exitPt=nullptr;
-      return std::make_pair(enterPt, exitPt);
-    }
-  }
-
-  // The edge is entirely above or below the grid cell
-  if(includeEdges){
-    if(((ty>ytop+compTol)&&(sy>ytop+compTol))||((ty<ybot-compTol)&&(sy<ybot-compTol))){
-      enterPt=nullptr;
-      exitPt=nullptr;
-      return std::make_pair(enterPt, exitPt);
-    }
-  }else{
-    if(((ty>ytop-compTol)&&(sy>ytop-compTol))||((ty<ybot+compTol)&&(sy<ybot+compTol))){
-      enterPt=nullptr;
-      exitPt=nullptr;
-      return std::make_pair(enterPt, exitPt);
-    }
-  }
-
-  // If it's vertical...
-  if(std::abs(tx-sx)<horizTol){
-
-    // if it overlaps the boundary exactly
-    if((tx<xleft+compTol)||(tx > xright-compTol)){
-      enterPt=nullptr;
-      exitPt=nullptr;
-      return std::make_pair(enterPt, exitPt);
-    }
-
-    enterX = sx;
-    exitX = sx;
-    if(sy>ty){
-      enterY = ytop;
-      exitY = ybot;
-    }else{
-      enterY = ybot;
-      exitY = ytop;
-    }
-
-  // If it's horizontal
-  }else if(std::abs(ty-sy)<horizTol){
-
-    // if it doesn't intersect the grid cell
-    if((ty<ybot+compTol)||(ty>ytop-compTol)){
-      enterPt=nullptr;
-      exitPt=nullptr;
-      return std::make_pair(enterPt, exitPt);
-    }
-
-    enterY = sy;
-    exitY = sy;
-    if(tx<sx){ // leave left side
-      enterX = xright;
-      exitX = xleft;
-
-    }else{ // leave right side
-      enterX = xleft;
-      exitX = xright;
-    }
-
-  // If it's not vertical or horizontal...
-  }else{
-
-    double slope = (ty-sy)/(tx-sx);
-
-    // If slope is positive, an intersection will only occur if the bottom right point is below the line segment.
-    if(slope>0){
-
-      if((ybot > sy + slope*(xright-sx)-compTol)||(ytop < sy + slope*(xleft-sx)+compTol)){
-        enterPt=nullptr;
-        exitPt=nullptr;
-        return std::make_pair(enterPt, exitPt);
-      }
-
-    // Similarly, if the slope is negative, an intersection will only occur if the bottom left point is below the line segment.
-    }else if(slope<0){
-      if((ybot > sy + slope*(xleft-sx)-compTol)||(ytop < sy + slope*(xright-sx)+compTol)){
-        enterPt=nullptr;
-        exitPt=nullptr;
-        return std::make_pair(enterPt, exitPt);
-      }
-
-    }else{
-      std::cerr << "I shouldn't be here...  The slop should always be nonzero at this stage." << std::endl;
-      assert(slope!=0);
-    }
-
-    // could enter from left and exit from right
-    if(tx>sx){
-      enterY = std::min(ytop, std::max(ybot, sy + slope*(xleft-sx)));
-      exitY = std::min(ytop, std::max(ybot, sy + slope*(xright-sx)));
-
-    // could enter from right and exit from left
-    }else{
-      enterY = std::min(ytop, std::max(ybot, sy + slope*(xright-sx)));
-      exitY = std::min(ytop, std::max(ybot, sy+slope*(xleft-sx)));
-    }
-
-    // Could enter from top and leave from bottom
-    if(ty<sy){
-      enterX = std::min(xright, std::max(xleft, sx + (ytop-sy)/slope));
-      exitX = std::min(xright, std::max(xleft, sx + (ybot-sy)/slope));
-
-    // Could enter from bottom and leave from top
-    }else{
-      enterX = std::min(xright, std::max(xleft, sx + (ybot-sy)/slope));
-      exitX = std::min(xright, std::max(xleft, sx + (ytop-sy)/slope));
-    }
-
-  }
-
-  bool srcIsInside, tgtIsInside;
-
-  if(includeEdges){
-    srcIsInside = (sx>xleft-compTol)&&(sx<xright+compTol)&&(sy>ybot-compTol)&&(sy<ytop+compTol);
-    tgtIsInside = (tx>xleft-compTol)&&(tx<xright+compTol)&&(ty>ybot-compTol)&&(ty<ytop+compTol);
-  }else{
-    srcIsInside = (sx>xleft+compTol)&&(sx<xright-compTol)&&(sy>ybot+compTol)&&(sy<ytop-compTol);
-    tgtIsInside = (tx>xleft+compTol)&&(tx<xright-compTol)&&(ty>ybot+compTol)&&(ty<ytop-compTol);
-  }
-
-  if(tgtIsInside){
-    exitPt = nullptr;
-  }else{
-    exitPt = std::make_shared<Point_2>(exitX,exitY);
-  }
-
-  if(srcIsInside){
-    enterPt = nullptr;
-  }else{
-    enterPt = std::make_shared<Point_2>(enterX,enterY);
-  }
-
-  return std::make_pair(enterPt, exitPt);
-}
-
-
-void PolygonRasterizeIter::AddCorners(Point_2 const& nextPt, std::vector<Point_2> &polyPts) const
-{
-  // const double xmin = indices.first * grid->dx + grid->xMin;
-  // const double xmax = xmin + grid->dx;
-  // const double ymin = indices.second * grid->dy + grid->yMin;
-  // const double ymax = ymin + grid->dy;
-
-  double backX = CGAL::to_double( polyPts.back().x() );
-  double backY = CGAL::to_double( polyPts.back().y() );
-
-  double enterX = CGAL::to_double( nextPt.x() );
-  double enterY = CGAL::to_double( nextPt.y() );
-
-  // Check to see if we need to add add any corners.
-  // If the xs and the ys are different OR if the points are far enough apart, then we need to add corner
-  bool sameXdiffY = (std::abs(backX-enterX)<compTol)&&(std::abs(backY-enterY)>compTol);
-  bool sameYdiffX = (std::abs(backY-enterY)<compTol)&&(std::abs(backX-enterX)>compTol);
-  bool sameEdge = sameXdiffY || sameYdiffX;
-
-  for(unsigned int i=0; i<4; ++i){
-  //while(!sameEdge){
-    // Add corner point
-
-    // Currently on the right
-    if((std::abs(backX-xright)<compTol)&&(backY<ytop-compTol)){
-      polyPts.push_back( Point_2(xright,ytop) );
-
-    // Currently on the top
-    }else if((std::abs(backY-ytop)<compTol)&&(backX>xleft+compTol)){
-      polyPts.push_back( Point_2(xleft, ytop) );
-
-    // Currently on the left
-    }else if((std::abs(backX-xleft)<compTol)&&(backY>ybot+compTol)){
-      polyPts.push_back( Point_2(xleft, ybot) );
-
-    // On the bottom
-    }else if((std::abs(backY-ybot)<compTol)&&(backX<xright-compTol)){
-      polyPts.push_back( Point_2(xright, ybot) );
-
-    }else{
-      std::cerr << "I shouldn't be here... " << std::endl;
-      assert(false);
-    }
-
-    backX = CGAL::to_double( polyPts.back().x() );
-    backY = CGAL::to_double( polyPts.back().y() );
-
-    sameXdiffY = (std::abs(backX-enterX)<compTol)&&(std::abs(backY-enterY)>compTol);
-    sameYdiffX = (std::abs(backY-enterY)<compTol)&&(std::abs(backX-enterX)>compTol);
-    sameEdge = sameXdiffY || sameYdiffX;
-
-    if(sameEdge){
-      break;
-    }
-  }
-}
+// void PolygonRasterizeIter::AddCorners(Point_2 const& nextPt, std::vector<Point_2> &polyPts) const
+// {
+//   // const double xmin = indices.first * grid->dx + grid->xMin;
+//   // const double xmax = xmin + grid->dx;
+//   // const double ymin = indices.second * grid->dy + grid->yMin;
+//   // const double ymax = ymin + grid->dy;
+//
+//   double backX = CGAL::to_double( polyPts.back().x() );
+//   double backY = CGAL::to_double( polyPts.back().y() );
+//
+//   double enterX = CGAL::to_double( nextPt.x() );
+//   double enterY = CGAL::to_double( nextPt.y() );
+//
+//   // Check to see if we need to add add any corners.
+//   // If the xs and the ys are different OR if the points are far enough apart, then we need to add corner
+//   bool sameXdiffY = (std::abs(backX-enterX)<compTol)&&(std::abs(backY-enterY)>compTol);
+//   bool sameYdiffX = (std::abs(backY-enterY)<compTol)&&(std::abs(backX-enterX)>compTol);
+//   bool sameEdge = sameXdiffY || sameYdiffX;
+//
+//   if(sameEdge)
+//     return;
+//
+//   for(unsigned int i=0; i<4; ++i){
+//   //while(!sameEdge){
+//     // Add corner point
+//
+//     // Currently on the right
+//     if((std::abs(backX-xright)<compTol)&&(backY<ytop-compTol)){
+//       polyPts.push_back( Point_2(xright,ytop) );
+//
+//     // Currently on the top
+//     }else if((std::abs(backY-ytop)<compTol)&&(backX>xleft+compTol)){
+//       polyPts.push_back( Point_2(xleft, ytop) );
+//
+//     // Currently on the left
+//     }else if((std::abs(backX-xleft)<compTol)&&(backY>ybot+compTol)){
+//       polyPts.push_back( Point_2(xleft, ybot) );
+//
+//     // On the bottom
+//     }else if((std::abs(backY-ybot)<compTol)&&(backX<xright-compTol)){
+//       polyPts.push_back( Point_2(xright, ybot) );
+//
+//     }else{
+//       std::cerr << "I shouldn't be here... " << std::endl;
+//       for(auto& pt : polyPts){
+//         std::cout << "  " << pt << std::endl;
+//       }
+//       assert(false);
+//     }
+//
+//     backX = CGAL::to_double( polyPts.back().x() );
+//     backY = CGAL::to_double( polyPts.back().y() );
+//
+//     sameXdiffY = (std::abs(backX-enterX)<compTol)&&(std::abs(backY-enterY)>compTol);
+//     sameYdiffX = (std::abs(backY-enterY)<compTol)&&(std::abs(backX-enterX)>compTol);
+//     sameEdge = sameXdiffY || sameYdiffX;
+//
+//     if(sameEdge){
+//       break;
+//     }
+//   }
+// }
 
 std::shared_ptr<PolygonRasterizeIter::Polygon_2> PolygonRasterizeIter::BoundaryIntersection()
 {
 
-  //std::cout << "(i,j) = " << indices.first << "," << indices.second << std::endl;
-  //std::cout << "Bounds = (" << xleft << "," << ybot << ") -> (" << xright << "," << ytop << ")" << std::endl;
-
-  // The edgesCW and edgesCCW containers contain edges that could overlap with
-  // each grid cell
-
-  std::vector<Point_2> polyPts;
-  std::shared_ptr<Point_2> enterPt, exitPt;
-
-  std::shared_ptr<Point_2> nextCorner;
-
-  // start with the ccw edges
-  for(auto& edge : edgesCCW){
-    std::tie(enterPt, exitPt) = EdgeCrossings(edge, false);
-
-    // std::cout << "CCW Edge: " << *edge.first << " -> " << *edge.second << std::endl;
-
-    // Add the entrance and exit points
-    if(enterPt){
-      // std::cout << "  enter pt: " << *enterPt << std::endl;
-      if(polyPts.size()>0){
-
-        // Check to make sure this is a new point
-        if(polyPts.back()!=(*enterPt)){
-          AddCorners(*enterPt, polyPts);
-          polyPts.push_back(*enterPt);
-        }
-
-      }else{
-        polyPts.push_back(*enterPt);
-      }
-
-    // If no entrance point, then add source node if it is inside the grid cell
-    }else if((edge.first->x()<xright-compTol)&&(edge.first->x()>xleft+compTol)&&(edge.first->y()>ybot+compTol)&&(edge.first->y()<ytop+compTol)){
-      if(polyPts.size()>0){
-        if(polyPts.back()!=(*edge.first)){
-          polyPts.push_back(*edge.first);
-        }
-      }else{
-        polyPts.push_back(*edge.first);
-      }
-    }
-
-    if(exitPt){
-      // std::cout << "  exit pt: " << *exitPt << std::endl;
-      if(polyPts.size()>0){
-        if(polyPts.back()!=(*exitPt)){
-          //AddCorners(*exitPt, polyPts);
-          polyPts.push_back(*exitPt);
-        }
-      }else{
-        polyPts.push_back(*exitPt);
-      }
-
-    // If no exit point, check to see if target is inside
-    }else if((edge.second->x()<xright-compTol)&&(edge.second->x()>xleft+compTol)&&(edge.second->y()>ybot+compTol)&&(edge.second->y()<ytop+compTol)){
-      if(polyPts.size()>0){
-        if(polyPts.back()!=(*edge.second)){
-          polyPts.push_back(*edge.second);
-        }
-      }else{
-        polyPts.push_back(*edge.second);
-      }
-    }
-  }
-
-  // std::cout << "PolyPts 0:" << std::endl;
-  // for(auto& p : polyPts)
-  //   std::cout << "  " << p << std::endl;
-
-  /* If the last CW edge and last CCW edge end at the same y-value, then
-     there is a horizontal edge that might cross this grid cell */
-   double ccwy = CGAL::to_double( edgesCCW.back().second->y() );
-   double cwy = CGAL::to_double( edgesCW.back().second->y() );
-   double ccwx = CGAL::to_double( edgesCCW.back().second->x() );
-   double cwx = CGAL::to_double( edgesCW.back().second->x() );
-   if((std::abs(ccwy-cwy)<compTol)&&(ccwx>xleft+compTol)&&(cwx<xright-compTol)){
-     if((ccwy>ybot+compTol)&&(ccwy<ytop-compTol)){
-       Point_2 newPt(std::min(xright,ccwx), ccwy);
-       if(polyPts.size()>0){
-         if(newPt != polyPts.back())
-           polyPts.push_back(newPt);
-       }else{
-         polyPts.push_back( newPt );
-       }
-
-       polyPts.push_back( Point_2(std::max(xleft,cwx), cwy) );
-     }
-   }
-
-   // std::cout << "PolyPts 1:" << std::endl;
-   // for(auto& p : polyPts)
-   //   std::cout << "  " << p << std::endl;
-
-  // Add the CW edges, but go in counter-clockwise order
-  for(auto edgeIter = edgesCW.rbegin(); edgeIter!=edgesCW.rend(); edgeIter++){
-    // std::cout << "CW Edge: " << *edgeIter->second << " -> " << *edgeIter->first << std::endl;
-    std::tie(enterPt, exitPt) = EdgeCrossings(std::make_pair(edgeIter->second, edgeIter->first), false);
-
-    if(enterPt){
-      // std::cout << "  enter pt: " << *enterPt << std::endl;
-
-      if(polyPts.size()>0){
-        if(polyPts.back()!=(*enterPt)){
-          AddCorners(*enterPt, polyPts);
-          polyPts.push_back(*enterPt);
-        }
-      }else{
-        polyPts.push_back(*enterPt);
-      }
-
-    // If no enter point, check edge
-    }else if((edgeIter->second->x()<xright-compTol)&&(edgeIter->second->x()>xleft+compTol)&&(edgeIter->second->y()>ybot+compTol)&&(edgeIter->second->y()<ytop-compTol)){
-      if(polyPts.size()>0){
-        if(polyPts.back()!=(*edgeIter->second)){
-          polyPts.push_back(*edgeIter->second);
-        }
-      }else{
-        polyPts.push_back(*edgeIter->second);
-      }
-    }
-
-    if(exitPt){
-      // std::cout << "  exit pt: " << *exitPt << std::endl;
-
-      if(polyPts.size()>0){
-        if(polyPts.back()!=(*exitPt)){
-          //AddCorners(*exitPt, polyPts);
-          polyPts.push_back(*exitPt);
-        }
-      }else{
-        polyPts.push_back(*exitPt);
-      }
-    }else if((edgeIter->first->x()<xright-compTol)&&(edgeIter->first->x()>xleft+compTol)&&(edgeIter->first->y()>ybot+compTol)&&(edgeIter->first->y()<ytop+compTol)){
-      if(polyPts.size()>0){
-        if(polyPts.back()!=(*edgeIter->first)){
-          polyPts.push_back(*edgeIter->first);
-        }
-      }else{
-        polyPts.push_back(*edgeIter->first);
-      }
-    }
-  }
-
-  // std::cout << "PolyPts 2:" << std::endl;
-  // for(auto& p : polyPts)
-  //   std::cout << "  " << p << std::endl;
-
-
-  /* If the first CW edge and first CCW edge start at the same y-value, then
-     there is a horizontal edge we might need to account for. Note that the edge
-     must cross one or both of the grid cell sides */
-  ccwy = CGAL::to_double( edgesCCW.front().first->y() );
-  cwy = CGAL::to_double( edgesCW.front().first->y() );
-  ccwx = CGAL::to_double( edgesCCW.front().first->x() );
-  cwx = CGAL::to_double( edgesCW.front().first->x() );
-
-  if((std::abs(ccwy-cwy)<compTol)&&(ccwx>xleft+compTol)&&(cwx<xright-compTol)){
-    if(ccwy>ybot+compTol){
-      if(polyPts.size()>0){
-        Point_2 newPt(std::min(xright,ccwx), ccwy);
-        if(polyPts.front() != newPt)
-          polyPts.insert(polyPts.begin(), newPt);
-        polyPts.insert(polyPts.begin(), Point_2(std::max(xleft,cwx), cwy));
-      }else{
-        polyPts.push_back(Point_2(std::max(xleft,cwx), cwy));
-        polyPts.push_back(Point_2(std::min(xright,ccwx), ccwy));
-      }
-    }
-  }
-
-  // std::cout << "PolyPts 3:" << std::endl;
-  // for(auto& p : polyPts)
-  //   std::cout << "  " << p << std::endl;
-
-  // Add corner points to complete the loop
-  if(polyPts.size()>0)
-    AddCorners(polyPts.front(), polyPts);
-
-  // std::cout << "PolyPts 4:" << std::endl;
-  // for(auto& p : polyPts)
-  //   std::cout << "  " << p << std::endl;
-
-  // std::cout << std::endl << std::endl;
-  if(polyPts.size()==0){
-    return nullptr;
-  }else{
-    return std::make_shared<Polygon_2>(polyPts.begin(), polyPts.end());
-  }
+  return cellBox->ClipPolygon(poly);
+  //
+  // //////////////////////////////////////////////////////////////////////////////
+  // // USING CGAL THIS WAY IS REALLY SLOW, BUT CAN BE A GOOD SANITY CHECK
+  // //
+  // Polygon_2 gridCellPoly;
+  // gridCellPoly.push_back(Point_2(indices.first*grid->dx+grid->xMin, indices.second*grid->dy+grid->yMin));
+  // gridCellPoly.push_back(Point_2((indices.first+1)*grid->dx+grid->xMin, indices.second*grid->dy+grid->yMin));
+  // gridCellPoly.push_back(Point_2((indices.first+1)*grid->dx+grid->xMin, (indices.second+1)*grid->dy+grid->yMin));
+  // gridCellPoly.push_back(Point_2(indices.first*grid->dx+grid->xMin, (indices.second+1)*grid->dy+grid->yMin));
+  //
+  // // The edgesCW and edgesCCW containers contain edges that could overlap with
+  // // each grid cell
+  // if(!poly->is_simple()){
+  //   std::cout << "Found a polygon that is not simple: " << *poly << std::endl;
+  //   assert(poly->is_simple());
+  // }
+  //
+  // std::list<Polygon_with_holes_2> temp;
+  // CGAL::intersection(*poly, gridCellPoly, std::back_inserter(temp));
+  //
+  // // There should only be one polygon intersection because everything is simple and convex
+  // assert(std::distance(temp.begin(),temp.end())==1);
+  //
+  // auto outPoly = std::make_shared<Polygon_2>(temp.begin()->outer_boundary());
+  //
+  // return outPoly;
+  // //
+  // //////////////////////////////////////////////////////////////////////////////
+  //
+  //
+  // std::vector<Point_2> polyPts;
+  // std::shared_ptr<Point_2> enterPt, exitPt;
+  //
+  // std::shared_ptr<Point_2> nextCorner;
+  //
+  // // start with the ccw edges
+  // for(auto& edge : edgesCCW){
+  //   std::tie(enterPt, exitPt) = EdgeCrossings(edge, false);
+  //
+  //   // std::cout << "CCW Edge: " << *edge.first << " -> " << *edge.second << std::endl;
+  //
+  //   // Add the entrance and exit points
+  //   if(enterPt){
+  //     // std::cout << "  enter pt: " << *enterPt << std::endl;
+  //     if(polyPts.size()>0){
+  //
+  //       // Check to make sure this is a new point
+  //       if(polyPts.back()!=(*enterPt)){
+  //         AddCorners(*enterPt, polyPts);
+  //         polyPts.push_back(*enterPt);
+  //       }
+  //
+  //     }else{
+  //       polyPts.push_back(*enterPt);
+  //     }
+  //
+  //   // If no entrance point, then add source node if it is inside the grid cell
+  //   }else if((edge.first->x()<xright-compTol)&&(edge.first->x()>xleft+compTol)&&(edge.first->y()>ybot+compTol)&&(edge.first->y()<ytop+compTol)){
+  //     if(polyPts.size()>0){
+  //       if(polyPts.back()!=(*edge.first)){
+  //         polyPts.push_back(*edge.first);
+  //       }
+  //     }else{
+  //       polyPts.push_back(*edge.first);
+  //     }
+  //   }
+  //
+  //   if(exitPt){
+  //     // std::cout << "  exit pt: " << *exitPt << std::endl;
+  //     if(polyPts.size()>0){
+  //       if(polyPts.back()!=(*exitPt)){
+  //         //AddCorners(*exitPt, polyPts);
+  //         polyPts.push_back(*exitPt);
+  //       }
+  //     }else{
+  //       polyPts.push_back(*exitPt);
+  //     }
+  //
+  //   // If no exit point, check to see if target is inside
+  //   }else if((edge.second->x()<xright-compTol)&&(edge.second->x()>xleft+compTol)&&(edge.second->y()>ybot+compTol)&&(edge.second->y()<ytop+compTol)){
+  //     if(polyPts.size()>0){
+  //       if(polyPts.back()!=(*edge.second)){
+  //         polyPts.push_back(*edge.second);
+  //       }
+  //     }else{
+  //       polyPts.push_back(*edge.second);
+  //     }
+  //   }
+  // }
+  //
+  // // std::cout << "PolyPts 0:" << std::endl;
+  // // for(auto& p : polyPts)
+  // //   std::cout << "  " << p << std::endl;
+  //
+  // /* If the last CW edge and last CCW edge end at the same y-value, then
+  //    there is a horizontal edge that might cross this grid cell */
+  //  double ccwy = CGAL::to_double( edgesCCW.back().second->y() );
+  //  double cwy = CGAL::to_double( edgesCW.back().second->y() );
+  //  double ccwx = CGAL::to_double( edgesCCW.back().second->x() );
+  //  double cwx = CGAL::to_double( edgesCW.back().second->x() );
+  //  if((std::abs(ccwy-cwy)<compTol)&&(ccwx>xleft+compTol)&&(cwx<xright-compTol)){
+  //    if((ccwy>ybot+compTol)&&(ccwy<ytop-compTol)){
+  //      Point_2 newPt(std::min(xright,ccwx), ccwy);
+  //      if(polyPts.size()>0){
+  //        if(newPt != polyPts.back())
+  //          polyPts.push_back(newPt);
+  //      }else{
+  //        polyPts.push_back( newPt );
+  //      }
+  //
+  //      polyPts.push_back( Point_2(std::max(xleft,cwx), cwy) );
+  //    }
+  //  }
+  //
+  //  // std::cout << "PolyPts 1:" << std::endl;
+  //  // for(auto& p : polyPts)
+  //  //   std::cout << "  " << p << std::endl;
+  //
+  // // Add the CW edges, but go in counter-clockwise order
+  // for(auto edgeIter = edgesCW.rbegin(); edgeIter!=edgesCW.rend(); edgeIter++){
+  //   // std::cout << "CW Edge: " << *edgeIter->second << " -> " << *edgeIter->first << std::endl;
+  //   std::tie(enterPt, exitPt) = EdgeCrossings(std::make_pair(edgeIter->second, edgeIter->first), false);
+  //
+  //   if(enterPt){
+  //     // std::cout << "  enter pt: " << *enterPt << std::endl;
+  //
+  //     if(polyPts.size()>0){
+  //       if(polyPts.back()!=(*enterPt)){
+  //         AddCorners(*enterPt, polyPts);
+  //         polyPts.push_back(*enterPt);
+  //       }
+  //     }else{
+  //       polyPts.push_back(*enterPt);
+  //     }
+  //
+  //   // If no enter point, check edge
+  //   }else if((edgeIter->second->x()<xright-compTol)&&(edgeIter->second->x()>xleft+compTol)&&(edgeIter->second->y()>ybot+compTol)&&(edgeIter->second->y()<ytop-compTol)){
+  //     if(polyPts.size()>0){
+  //       if(polyPts.back()!=(*edgeIter->second)){
+  //         polyPts.push_back(*edgeIter->second);
+  //       }
+  //     }else{
+  //       polyPts.push_back(*edgeIter->second);
+  //     }
+  //   }
+  //
+  //   if(exitPt){
+  //     // std::cout << "  exit pt: " << *exitPt << std::endl;
+  //
+  //     if(polyPts.size()>0){
+  //       if(polyPts.back()!=(*exitPt)){
+  //         //AddCorners(*exitPt, polyPts);
+  //         polyPts.push_back(*exitPt);
+  //       }
+  //     }else{
+  //       polyPts.push_back(*exitPt);
+  //     }
+  //   }else if((edgeIter->first->x()<xright-compTol)&&(edgeIter->first->x()>xleft+compTol)&&(edgeIter->first->y()>ybot+compTol)&&(edgeIter->first->y()<ytop+compTol)){
+  //     if(polyPts.size()>0){
+  //       if(polyPts.back()!=(*edgeIter->first)){
+  //         polyPts.push_back(*edgeIter->first);
+  //       }
+  //     }else{
+  //       polyPts.push_back(*edgeIter->first);
+  //     }
+  //   }
+  // }
+  //
+  // // std::cout << "PolyPts 2:" << std::endl;
+  // // for(auto& p : polyPts)
+  // //   std::cout << "  " << p << std::endl;
+  //
+  //
+  // /* If the first CW edge and first CCW edge start at the same y-value, then
+  //    there is a horizontal edge we might need to account for. Note that the edge
+  //    must cross one or both of the grid cell sides */
+  // ccwy = CGAL::to_double( edgesCCW.front().first->y() );
+  // cwy = CGAL::to_double( edgesCW.front().first->y() );
+  // ccwx = CGAL::to_double( edgesCCW.front().first->x() );
+  // cwx = CGAL::to_double( edgesCW.front().first->x() );
+  //
+  // if((std::abs(ccwy-cwy)<compTol)&&(ccwx>xleft+compTol)&&(cwx<xright-compTol)){
+  //   if(ccwy>ybot+compTol){
+  //     if(polyPts.size()>0){
+  //       Point_2 newPt(std::min(xright,ccwx), ccwy);
+  //       if(polyPts.front() != newPt)
+  //         polyPts.insert(polyPts.begin(), newPt);
+  //       polyPts.insert(polyPts.begin(), Point_2(std::max(xleft,cwx), cwy));
+  //     }else{
+  //       polyPts.push_back(Point_2(std::max(xleft,cwx), cwy));
+  //       polyPts.push_back(Point_2(std::min(xright,ccwx), ccwy));
+  //     }
+  //   }
+  // }
+  //
+  // // std::cout << "PolyPts 3:" << std::endl;
+  // // for(auto& p : polyPts)
+  // //   std::cout << "  " << p << std::endl;
+  //
+  // // Add corner points to complete the loop
+  // if(polyPts.size()>0)
+  //   AddCorners(polyPts.front(), polyPts);
+  //
+  // // std::cout << "PolyPts 4:" << std::endl;
+  // // for(auto& p : polyPts)
+  // //   std::cout << "  " << p << std::endl;
+  //
+  // // std::cout << std::endl << std::endl;
+  // if(polyPts.size()==0){
+  //   return nullptr;
+  // }else{
+  //   return std::make_shared<Polygon_2>(polyPts.begin(), polyPts.end());
+  // }
 
 }
 

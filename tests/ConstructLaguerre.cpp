@@ -19,21 +19,21 @@ int main(int argc, char* argv[])
 {
   int numPts = 3;
   Eigen::VectorXd costs(numPts);
-  costs << 1.0, 1.0, 1.0+1e-4;
+  costs << 1.0, 1.00751, 1.00751;
 
   Eigen::Matrix2Xd pts(2,numPts);
   pts << 0.1, 0.2, 0.1,
          0.1, 0.1, 0.2;
 
   Eigen::Matrix2Xd domain(2,4);
-  domain << 0.0, 0.3, 0.3, 0.0,
-            0.0, 0.0, 0.3, 0.3;
-  domain << 0.0, 1.0, 1.0, 0.0,
-            0.0, 0.0, 1.0, 1.0;
+  domain << 0.0, 0.2, 0.2, 0.0,
+            0.0, 0.0, 0.2, 0.2;
+  // domain << 0.0, 1.0, 1.0, 0.0,
+  //           0.0, 0.0, 1.0, 1.0;
 
   LaguerreDiagram diag(domain(0,0), domain(0,1), domain(1,0), domain(1,2), pts, costs);
 
-  auto grid = std::make_shared<RegularGrid>(domain(0,0),domain(1,0), domain(0,2), domain(1,2), 20, 20);
+  auto grid = std::make_shared<RegularGrid>(domain(0,0),domain(1,0), domain(0,2), domain(1,2), 50, 50);
 
   double area = 0.0;
   Eigen::VectorXd localAreas = Eigen::VectorXd::Zero(3);
@@ -64,7 +64,7 @@ int main(int argc, char* argv[])
 
       double cellArea;
 
-      
+
       if(gridIter.IsBoundary()){
         cellArea = CGAL::to_double( gridIter.OverlapPoly()->area() );
         //std::cout << "  " << gridIter.Indices().first << ", " << gridIter.Indices().second << " -> Overlap poly = " << *gridIter.OverlapPoly() << std::endl;

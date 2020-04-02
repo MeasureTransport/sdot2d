@@ -68,7 +68,7 @@ double RegularGrid::TopSide(double x) const
 unsigned int RegularGrid::RightNode(double x) const
 {
   double indDouble = (x-xMin)/dx;
-  double distToNode = std::abs(std::round(indDouble) - indDouble);
+  double distToNode = std::abs(std::round(indDouble)*dx+xMin - x);
 
   if(x>xMax-compTol){
     return Nx;
@@ -82,7 +82,7 @@ unsigned int RegularGrid::RightNode(double x) const
 unsigned int RegularGrid::TopNode(double y) const
 {
   double indDouble = (y-yMin)/dy;
-  double distToNode = std::abs(std::round(indDouble) - indDouble);
+  double distToNode = std::abs(std::round(indDouble)*dy+yMin - y);
 
   if(y>yMax-compTol){
     return Ny;
@@ -96,7 +96,7 @@ unsigned int RegularGrid::TopNode(double y) const
 unsigned int RegularGrid::LeftNode(double x) const
 {
   double indDouble = (x-xMin)/dx;
-  double distToNode = std::abs(std::round(indDouble) - indDouble);
+  double distToNode = std::abs(std::round(indDouble)*dx+xMin - x);
 
   if(x<xMin+compTol){
     return 0;
@@ -111,7 +111,7 @@ unsigned int RegularGrid::LeftNode(double x) const
 unsigned int RegularGrid::BottomNode(double y) const
 {
   double indDouble = (y-yMin)/dy;
-  double distToNode = std::abs(std::round(indDouble) - indDouble);
+  double distToNode = std::abs(std::round(indDouble)*dy+yMin - y);
 
   if(y<yMin+compTol){
     return 0;
