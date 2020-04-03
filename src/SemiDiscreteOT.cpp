@@ -89,10 +89,10 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT::ComputeGradient(Eigen::VectorX
 
      if(gridIter.IsBoundary()){
 
-
        // Break the intersection polygon into triangles and add contributions from each triangle
        std::shared_ptr<PolygonRasterizeIter::Polygon_2> overlapPoly = gridIter.OverlapPoly();
-       //std::cout << "   Cell " << cellInd << " = " << *overlapPoly << std::endl;
+       assert(overlapPoly);
+       assert(overlapPoly->size()>2); // <- Makes sure there is at least 3 nodes in the polygon
 
        auto beginVert = overlapPoly->vertices_begin();
        auto vert1 = beginVert;
@@ -153,7 +153,11 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT::ComputeGradient(Eigen::VectorX
    weightedArea += lagCellArea;
  }
 
- assert(std::abs(weightedArea-1.0)<1e-12);
+ if(std::abs(weightedArea-1.0)>1e-10){
+   std::cout << "Warning:  Total probability has an error of " << weightedArea-1.0 << std::endl;
+   //assert(std::abs(weightedArea-1.0)<1e-10);
+ }
+
 
  return std::make_pair(objParts.sum(), gradient);
 }
@@ -301,7 +305,7 @@ double SemidiscreteOT::LineIntegral(LaguerreDiagram::Point_2 const& srcPt,
           nextt_horz = std::min(1.0, ((yInd+1)*grid->dy + grid->yMin-ys)/dy);
         }else{
           yInd--;
-          nextt_horz = std::min(1.0, ((yInd-1)*grid->dy + grid->yMin-ys)/dy);
+          nextt_horz = std::min(1.0, ((yInd)*grid->dy + grid->yMin-ys)/dy);
         }
       }
 
@@ -310,10 +314,10 @@ double SemidiscreteOT::LineIntegral(LaguerreDiagram::Point_2 const& srcPt,
         xInd++;
         nextt_vert = std::min(1.0,  ( (xInd+1)*grid->dx + grid->xMin - xs) / dx);
       }
-
       currt = nextt;
       nextt = std::min(nextt_horz,nextt_vert);
     }
+
     if((xInd<grid->NumCells(0))&&(yInd<grid->NumCells(1)))
       val += (nextt-currt)*segLenth*dist->Density(xInd,yInd);
 
@@ -340,6 +344,7 @@ Eigen::SparseMatrix<double> SemidiscreteOT::ComputeHessian(LaguerreDiagram const
   LaguerreDiagram::Point_2 srcPt, tgtPt;
 
   for(unsigned int cellInd1=0; cellInd1<numCells; ++cellInd1){
+
     for(auto edgeTuple : lagDiag.InternalEdges(cellInd1)){
       std::tie(cellInd2, srcPt, tgtPt) = edgeTuple;
 
@@ -347,6 +352,7 @@ Eigen::SparseMatrix<double> SemidiscreteOT::ComputeHessian(LaguerreDiagram const
       intVal = 0.25*LineIntegral(srcPt,tgtPt)/(discrPts.col(cellInd1)-discrPts.col(cellInd2)).norm();
 
       diagVals(cellInd1) -= intVal;
+
       hessVals.push_back(T(cellInd1,cellInd2,intVal));
     }
   }
@@ -413,6 +419,8 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd const& 
 
   // Compute an initial gradient and Hessian
   lagDiag  = std::make_shared<LaguerreDiagram>(grid->xMin, grid->xMax, grid->yMin, grid->yMax, discrPts, x);
+  assert(lagDiag!=nullptr);
+
   std::tie(fval, grad) = ComputeGradient(x, *lagDiag);
 
   fval *= -1.0;
@@ -430,7 +438,7 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd const& 
     hess *= -1.0;
 
     if(printLevel>0){
-      std::printf("  %9d, %11.3f,  %5.3e\n", it, trustRadius, grad.norm());
+      std::printf("  %9d, %11.2e,  %5.3e\n", it, trustRadius, grad.norm());
     }
 
     if(gradNorm < xtol_abs){
@@ -446,9 +454,10 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd const& 
 
     // Try constructing the new Laguerre diagram.  If we can't then shrink the trust region size
     try{
-      newLagDiag  = std::make_shared<LaguerreDiagram>(grid->xMin, grid->xMax, grid->yMin, grid->yMax, discrPts, newX);
 
+      newLagDiag  = std::make_shared<LaguerreDiagram>(grid->xMin, grid->xMax, grid->yMin, grid->yMax, discrPts, newX);
       std::tie(newF, newGrad) = ComputeGradient(newX, *newLagDiag);
+
       newF *= -1.0;
       newGrad *= -1.0;
 

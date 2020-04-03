@@ -37,7 +37,10 @@ namespace sdot{
     */
     std::pair<Eigen::VectorXd, double> Solve(Eigen::VectorXd const& prices0);
 
-    std::shared_ptr<LaguerreDiagram> Diagram() const{return lagDiag;}
+    /** Returns the Laguerre diagram that was constructed during Solve.  If the
+    diagram hasn't  been constructed yet, the returned shared_ptr will be a nullptr.
+    */
+    std::shared_ptr<LaguerreDiagram> const& Diagram() const{return lagDiag;}
 
   private:
 

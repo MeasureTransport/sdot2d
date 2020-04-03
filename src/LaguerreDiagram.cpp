@@ -13,13 +13,12 @@ using namespace sdot;
 LaguerreDiagram::LaguerreDiagram(double xBndLeftIn,   double xBndRightIn,
                                  double yBndBottomIn, double yBndTopIn,
                                  Eigen::Matrix2Xd const& pts,
-                                 Eigen::VectorXd  const& costs) : bbox(xBndLeftIn, xBndRightIn, yBndBottomIn, yBndTopIn)
+                                 Eigen::VectorXd  const& costs) : bbox(xBndLeftIn, xBndRightIn, yBndBottomIn, yBndTopIn),
+                                                                  infDist(2.0*std::sqrt(std::pow(xBndRightIn-xBndLeftIn,2.0) + std::pow(yBndTopIn-yBndBottomIn,2.0)))
 {
   numPts = pts.cols();
   assert(costs.size()==numPts);
 
-
-//  CreateBoundaryPolygon(bndryPts);
   CreateUnboundedDiagram(pts,costs);
   CreateBoundedCells(pts);
 }
@@ -100,6 +99,7 @@ std::shared_ptr<LaguerreDiagram::Polygon_2> LaguerreDiagram::BoundOneCell(PowerD
 
         // Compute the direction of dividing line between this cell and the other cell
         Vector_2 dir(vs.y()-vt.y(), -(vs.x()-vt.x()));
+        dir /= std::sqrt(CGAL::to_double(dir.squared_length()));
 
         // If the edge doesn't have a source or a target...
         if( (!halfEdge->has_source()) && (!halfEdge->has_target()) ){
@@ -147,6 +147,7 @@ std::shared_ptr<LaguerreDiagram::Polygon_2> LaguerreDiagram::BoundOneCell(PowerD
 
             auto next_vt = nextHalfEdge->twin()->face()->dual()->point();
             Vector_2 next_dir(vs.y()-next_vt.y(), -(vs.x()-next_vt.x()));
+            next_dir /= std::sqrt(CGAL::to_double(next_dir.squared_length()));
 
             Point_2 next_tgt = nextHalfEdge->target()->point();
             Point_2 next_src = next_tgt - infDist*next_dir;
@@ -163,9 +164,14 @@ std::shared_ptr<LaguerreDiagram::Polygon_2> LaguerreDiagram::BoundOneCell(PowerD
 
       } while ( ++halfEdge != halfEdgeStart);
 
-
       auto outPoly = std::make_shared<Polygon_2>(polyPts.begin(), polyPts.end());//temp.begin()->outer_boundary());
+      assert(outPoly);
 
+      if(outPoly->size()<3){
+        std::stringstream msg;
+        msg << "Could not construct Laguerre diagram. Found empty Laguerre cell.";
+        throw LaguerreDiagram::ConstructionException(msg.str());
+      }
 
       // Remove near duplicate vertices
       auto currVert = outPoly->vertices_begin();
@@ -180,6 +186,7 @@ std::shared_ptr<LaguerreDiagram::Polygon_2> LaguerreDiagram::BoundOneCell(PowerD
           nextVert++;
         }
       }
+
       if(CGAL::squared_distance(*outPoly->vertices_begin(), *currVert)< compTol){
         outPoly->erase(currVert);
       }

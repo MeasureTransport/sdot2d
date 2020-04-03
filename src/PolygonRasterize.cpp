@@ -94,7 +94,7 @@ std::tuple<unsigned int, unsigned int, unsigned int, unsigned int> PolygonRaster
 
     // if the edge starts before this row of grid cells
     if(edgesCCW.at(i).first->y() < y-compTol){
-      x1 = CGAL::to_double( edgesCCW.at(i).first->x() + slopesCCW.at(i)*(y-edgesCW.at(i).first->y()) );
+      x1 = CGAL::to_double( edgesCCW.at(i).first->x() + slopesCCW.at(i)*(y-edgesCCW.at(i).first->y()) );
 
     // Otherwise the edge starts inside the grid cell
     }else{
@@ -671,7 +671,6 @@ PolygonRasterizeIter& PolygonRasterizeIter::Increment()
 
     unsigned int xInd_begin;
     std::tie(xInd_begin, maxLeftIndBC, minRightIndBC, xInd_end) = GetXInds(y);
-    //std::cout << "Important xs = " << xInd_begin << ", " << maxLeftIndBC << ", " << minRightIndBC << ", " << xInd_end << std::endl;
 
     if(xInd_end<xInd_begin){
       isValid=false;

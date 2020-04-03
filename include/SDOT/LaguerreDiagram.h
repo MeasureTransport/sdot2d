@@ -129,7 +129,7 @@ private:
   */
   std::vector<std::vector<std::tuple<unsigned int, Point_2,Point_2>>> internalEdges;
 
-  const double infDist = 1e5;
+  const double infDist;
 
 };
 
