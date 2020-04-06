@@ -70,6 +70,19 @@ namespace sdot{
     */
     std::shared_ptr<LaguerreDiagram> const& Diagram() const{return lagDiag;}
 
+
+    static std::shared_ptr<LaguerreDiagram> BuildCentroidal(std::shared_ptr<Distribution2d> const& distIn,
+                                                            Eigen::Matrix2Xd                const& initialPoints,
+                                                            Eigen::VectorXd                 const& pointProbs,
+                                                            unsigned int                           maxIts=200,
+                                                            double                                 tol=1e-3);
+
+
+    static std::shared_ptr<LaguerreDiagram> BuildCentroidal(std::shared_ptr<Distribution2d> const& distIn,
+                                                            unsigned int                           numPts,
+                                                            unsigned int                           maxIts=200,
+                                                            double                                 tol=1e-3);
+
   private:
 
     /** Solves the trust region subproblem using a Steihaug-CG approach.
@@ -106,6 +119,9 @@ namespace sdot{
     std::pair<double, Eigen::VectorXd> ComputeGradient(Eigen::VectorXd const& prices,
                                                        LaguerreDiagram const& lagDiag) const;
 
+    /** Computes the weighted centroids, e.g.,  of each Laguerre cell. */
+    Eigen::Matrix2Xd WeightedCentroids(LaguerreDiagram const& lagDiag) const;
+
     /** Given an existing Laguerre diagram, this function computes the Hessian by
         integrating over each pair of Laguerre cell boundaries.
 
@@ -115,10 +131,24 @@ namespace sdot{
     double LineIntegral(LaguerreDiagram::Point_2 const& srcPt,
                         LaguerreDiagram::Point_2 const& tgtPt) const;
 
+    /**
+    Computes the integral
+    \f[
+    \int_{x_{min}}^{x_{max}}\int_{y_{min}}^{y_{max}} 1/2 (x-x_j)^2 + 1/2 (y-y_j)^2 dydx
+    \f]
+    over a rectangular region \f$\Omega= [x_{min},x_{max}] \times [y_{min},y_{max}]\f$.
+    */
     static double SquareIntegral(double xmin, double xmax,
                                  double ymin, double ymax,
                                  double px,   double py);
 
+    /**
+    Computes the integral
+    \f[
+    \int_{\Omega} 1/2 (x-x_j)^2 + 1/2 (y-y_j)^2 dxdy
+    \f]
+    over a triangle defined by points (x1,y1), (x2,y2), and (x3,y3).
+    */
     static double TriangleIntegral(double x1, double y1,
                                    double x2, double y2,
                                    double x3, double y3,

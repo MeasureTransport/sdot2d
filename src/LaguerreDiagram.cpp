@@ -1,5 +1,7 @@
 #include "SDOT/LaguerreDiagram.h"
 
+#include "SDOT/PolygonRasterize.h"
+
 // standard includes
 #include <iostream>
 #include <random>
@@ -48,11 +50,11 @@ Eigen::Matrix2Xd LaguerreDiagram::GetCellVertices(int ind) const
   return points;
 }
 
-Eigen::VectorXd LaguerreDiagram::Areas() const
+Eigen::VectorXd LaguerreDiagram::Areas(std::shared_ptr<Distribution2d> const& dist) const
 {
   Eigen::VectorXd areas(NumCells());
   for(int i=0; i<areas.size();++i)
-    areas(i) = CellArea(i);
+    areas(i) = CellArea(i, dist);
   return areas;
 }
 
@@ -89,12 +91,81 @@ double LaguerreDiagram::CellArea(unsigned int cellInd) const
 }
 
 
-Eigen::Matrix2Xd LaguerreDiagram::Centroids() const
+double LaguerreDiagram::CellArea(unsigned int cellInd, std::shared_ptr<Distribution2d> const& dist) const
+{
+  if(dist==nullptr)
+    return CellArea(cellInd);
+
+  auto& grid = dist->Grid();
+
+  double polyArea = 0.0;
+
+  // Loop over the grid cells in this Laguerre cell
+  PolygonRasterizeIter gridIter(dist->Grid(), laguerreCells.at(cellInd));
+
+  unsigned int xInd, yInd;
+  double x1, x2, x3, y1, y2, y3, gridCellDens;
+
+  while(gridIter.IsValid()){
+
+    xInd = gridIter.Indices().first;
+    yInd = gridIter.Indices().second;
+
+    // The probability in this grid cell
+    gridCellDens = dist->Density(xInd,yInd);
+
+    // The area of the intersection of this grid cell and the Laguerre cell
+    double interArea = 0.0;
+
+    if(gridIter.IsBoundary()){
+
+      // Break the intersection polygon into triangles and add contributions from each triangle
+      std::shared_ptr<PolygonRasterizeIter::Polygon_2> overlapPoly = gridIter.OverlapPoly();
+      assert(overlapPoly);
+      assert(overlapPoly->size()>2); // <- Makes sure there is at least 3 nodes in the polygon
+
+      auto beginVert = overlapPoly->vertices_begin();
+      auto vert1 = beginVert;
+      vert1++;
+      auto vert2 = vert1;
+      vert2++;
+
+      x1 = CGAL::to_double( beginVert->x() );
+      y1 = CGAL::to_double( beginVert->y() );
+
+      //interArea = gridCellDens*CGAL::to_double( overlapPoly->area() );
+
+      for(; vert2!=overlapPoly->vertices_end(); vert2++, vert1++)
+      {
+        x2 = CGAL::to_double( vert1->x() );
+        y2 = CGAL::to_double( vert1->y() );
+        x3 = CGAL::to_double( vert2->x() );
+        y3 = CGAL::to_double( vert2->y() );
+
+        double triArea = 0.5*std::abs((x2*y1-x1*y2)+(x3*y2-x2*y3)+(x1*y3-x3*y1));
+
+        interArea += triArea;
+      }
+
+    }else{
+      interArea += grid->dx*grid->dy;
+    }
+
+    polyArea += interArea*gridCellDens;
+
+    gridIter.Increment();
+  }
+  return polyArea;
+}
+
+
+
+Eigen::Matrix2Xd LaguerreDiagram::Centroids(std::shared_ptr<Distribution2d> const& dist) const
 {
   Eigen::Matrix2Xd centroids(2,NumCells());
 
   for(int i=0; i<NumCells(); ++i){
-    centroids.col(i) = CellCentroid(i);
+    centroids.col(i) = CellCentroid(i, dist);
   }
 
   return centroids;
@@ -156,7 +227,8 @@ std::shared_ptr<LaguerreDiagram> LaguerreDiagram::BuildCentroidal(BoundingBox   
                                                                   Eigen::Matrix2Xd  const& initialPts,
                                                                   Eigen::VectorXd   const& prices,
                                                                   unsigned int maxIts,
-                                                                  double tol)
+                                                                  double tol,
+                                                                  std::shared_ptr<Distribution2d> const& dist)
 {
   assert(prices.size()==initialPts.cols());
 
@@ -173,7 +245,7 @@ std::shared_ptr<LaguerreDiagram> LaguerreDiagram::BuildCentroidal(BoundingBox   
     std::swap(currPts,newPts);
 
     diagram = std::make_shared<LaguerreDiagram>(bbox, currPts, prices);
-    newPts = diagram->Centroids();
+    newPts = diagram->Centroids(dist);
 
     resid = (newPts-currPts).cwiseAbs().maxCoeff();
 
@@ -190,47 +262,122 @@ std::shared_ptr<LaguerreDiagram> LaguerreDiagram::BuildCentroidal(BoundingBox   
   return diagram;
 }
 
+Eigen::Matrix2Xd LaguerreDiagram::LatinHypercubeSample(BoundingBox const& bbox,
+                                                       unsigned int       numPts)
+{
+  double dx = (bbox.xMax - bbox.xMin)/numPts;
+  double dy = (bbox.yMax - bbox.yMin)/numPts;
+
+  // Latin hypercube sampling
+  std::vector<double> xInds(numPts);
+  std::vector<double> yInds(numPts);
+  for(unsigned int i=0; i<numPts; ++i){
+    xInds[i] = i;
+    yInds[i] = i;
+  }
+
+  unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+  std::default_random_engine rg(seed);
+  std::uniform_real_distribution<double> u(0.0,1.0);
+
+  std::shuffle(xInds.begin(), xInds.end(), rg);
+  std::shuffle(yInds.begin(), yInds.end(), rg);
+
+  // Generate the points
+  Eigen::Matrix2Xd initialPoints(2,numPts);
+  for(unsigned int i=0; i<numPts; ++i){
+    initialPoints(0,i) = bbox.xMin + dx*(u(rg)+xInds[i]);
+    initialPoints(1,i) = bbox.yMin + dy*(u(rg)+yInds[i]);
+  }
+
+  return initialPoints;
+}
+
 std::shared_ptr<LaguerreDiagram> LaguerreDiagram::BuildCentroidal(BoundingBox const& bbox,
                                                                   unsigned int       numPts,
                                                                   unsigned int maxIts,
-                                                                  double tol)
+                                                                  double tol,
+                                                                  std::shared_ptr<Distribution2d> const& dist)
 {
-    double dx = (bbox.xMax - bbox.xMin)/numPts;
-    double dy = (bbox.yMax - bbox.yMin)/numPts;
-
-    // Latin hypercube sampling
-    std::vector<double> xInds(numPts);
-    std::vector<double> yInds(numPts);
-    for(unsigned int i=0; i<numPts; ++i){
-      xInds[i] = i;
-      yInds[i] = i;
-    }
-
-    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-    std::default_random_engine rg(seed);
-    std::uniform_real_distribution<double> u(0.0,1.0);
-
-    std::shuffle(xInds.begin(), xInds.end(), rg);
-    std::shuffle(yInds.begin(), yInds.end(), rg);
-
-    // Generate the points
-    Eigen::Matrix2Xd initialPoints(2,numPts);
-    for(unsigned int i=0; i<numPts; ++i){
-      initialPoints(0,i) = bbox.xMin + dx*(u(rg)+xInds[i]);
-      initialPoints(1,i) = bbox.yMin + dy*(u(rg)+yInds[i]);
-    }
-
-    return BuildCentroidal(bbox, initialPoints, Eigen::VectorXd::Ones(numPts), maxIts, tol);
+  Eigen::Matrix2Xd initialPoints = LatinHypercubeSample(bbox,numPts);
+  return BuildCentroidal(bbox, initialPoints, Eigen::VectorXd::Ones(numPts), maxIts, tol, dist);
 }
 
 
 
-// void LaguerreDiagram::CreateBoundaryPolygon(Eigen::Matrix2Xd const& bndryPts)
-// {
-//   // Set up the domain boundary.  Points should go around the bounding polygon in counter-clockwise order
-//   for(int i=0; i<bndryPts.cols(); ++i)
-//     boundPoly.push_back(Point_2(bndryPts(0,i),bndryPts(1,i)));
-// }
+Eigen::Vector2d LaguerreDiagram::CellCentroid(unsigned int cellInd, std::shared_ptr<Distribution2d> const& dist) const
+{
+  if(dist==nullptr)
+    return CellCentroid(cellInd);
+
+  auto& grid = dist->Grid();
+
+  Eigen::Vector2d centroid = Eigen::Vector2d::Zero(2);
+
+  double polyArea = 0.0;
+
+  // Loop over the grid cells in this Laguerre cell
+  PolygonRasterizeIter gridIter(dist->Grid(), laguerreCells.at(cellInd));
+
+  unsigned int xInd, yInd;
+  double x1, x2, x3, y1, y2, y3, gridCellDens;
+
+  while(gridIter.IsValid()){
+
+    xInd = gridIter.Indices().first;
+    yInd = gridIter.Indices().second;
+
+    // The probability in this grid cell
+    gridCellDens = dist->Density(xInd,yInd);
+
+    // The area of the intersection of this grid cell and the Laguerre cell
+    //double interArea = 0.0;
+
+    if(gridIter.IsBoundary()){
+
+      // Break the intersection polygon into triangles and add contributions from each triangle
+      std::shared_ptr<PolygonRasterizeIter::Polygon_2> overlapPoly = gridIter.OverlapPoly();
+      assert(overlapPoly);
+      assert(overlapPoly->size()>2); // <- Makes sure there is at least 3 nodes in the polygon
+
+      auto beginVert = overlapPoly->vertices_begin();
+      auto vert1 = beginVert;
+      vert1++;
+      auto vert2 = vert1;
+      vert2++;
+
+      x1 = CGAL::to_double( beginVert->x() );
+      y1 = CGAL::to_double( beginVert->y() );
+
+      //interArea = gridCellDens*CGAL::to_double( overlapPoly->area() );
+
+      for(; vert2!=overlapPoly->vertices_end(); vert2++, vert1++)
+      {
+        x2 = CGAL::to_double( vert1->x() );
+        y2 = CGAL::to_double( vert1->y() );
+        x3 = CGAL::to_double( vert2->x() );
+        y3 = CGAL::to_double( vert2->y() );
+
+        double triArea = 0.5*std::abs((x2*y1-x1*y2)+(x3*y2-x2*y3)+(x1*y3-x3*y1));
+
+        centroid(0) += gridCellDens*triArea * (x1+x2+x3)/3.0;
+        centroid(1) += gridCellDens*triArea * (y1+y2+y3)/3.0;
+
+        polyArea += gridCellDens*triArea;
+      }
+
+    }else{
+      polyArea += gridCellDens*grid->dx*grid->dy;
+      centroid += gridCellDens*(grid->dx*grid->dy)*grid->Center(xInd,yInd);
+    }
+
+    gridIter.Increment();
+  }
+
+  centroid /= polyArea;
+  return centroid;
+}
+
 
 void LaguerreDiagram::CreateUnboundedDiagram(Eigen::Matrix2Xd const& pts,
                                              Eigen::VectorXd  const& costs)

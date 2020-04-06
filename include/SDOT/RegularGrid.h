@@ -15,7 +15,7 @@ public:
 
   RegularGrid(BoundingBox const& bbox,
               unsigned int Nx_,
-              unsigned int    Ny_);
+              unsigned int Ny_);
 
   /** Returns the number of cells in each direction (dim=0,1) or the total number
       of cells in the grid (dim=-1).  Defaults to total number in grid.
@@ -58,6 +58,12 @@ public:
       If y is within compTol of a node location, that location is returned.
   */
   unsigned int BottomNode(double y) const;
+
+  /** Returns the center of a grid cell.
+      @param[in] xInd The x index of the grid cell.
+      @param[in] yInd The y index of the grid cell.
+  */
+  Eigen::Vector2d Center(unsigned int xInd, unsigned int yInd) const;
 
   /// Bounding box
   const double xMin, yMin, xMax, yMax;

@@ -18,6 +18,7 @@
 #include <CGAL/Triangulation_vertex_base_with_info_2.h>
 
 #include "SDOT/BoundingBox.h"
+#include "SDOT/Distribution2d.h"
 
 namespace sdot{
 
@@ -88,7 +89,8 @@ public:
                                                           Eigen::Matrix2Xd  const& initialPts,
                                                           Eigen::VectorXd  const& prices,
                                                           unsigned int maxIts=200,
-                                                          double tol=1e-3);
+                                                          double tol=1e-3,
+                                                          std::shared_ptr<Distribution2d> const& dist=nullptr);
 
   /** Creates a centroidal Voronoi/Power diagram using Lloyd's algorithm.  Initializes
       the points with latin hypercube sampling.
@@ -101,7 +103,12 @@ public:
   static std::shared_ptr<LaguerreDiagram> BuildCentroidal(BoundingBox const& bbox,
                                                           unsigned int       numPts,
                                                           unsigned int maxIts=200,
-                                                          double tol=1e-3);
+                                                          double tol=1e-3,
+                                                          std::shared_ptr<Distribution2d> const& dist=nullptr);
+
+  /** Generates numPts samples in the bounding box using lating hypercube sampling. */
+  static Eigen::Matrix2Xd LatinHypercubeSample(BoundingBox const& bbox,
+                                               unsigned int       numPts);
 
   /** Returns a CGAL Polygon_2 object representing one of the Laguerre cells. */
   std::shared_ptr<Polygon_2> const& GetCell(int ind) const{return laguerreCells.at(ind);};
@@ -125,7 +132,7 @@ public:
   /** Returns the center of mass of the cell.  Using in Lloyd's algorithm for
       centroidal diagrams.  For a polygon covering a region $\Omega$, the center
       of mass is given by $\int_\Omega x dx / \int_\Omega dx$, where $x\in\mathbb{R}^2$ is the position.
-      The GetCellCenter function computes this integral by breaking the convex
+      The CellCentroid function computes this integral by breaking the convex
       polygon into triangles and computing summing the integrals over each
       triangle.
       @param[in] cellInd The index of the Laguerre cell of interest.
@@ -133,17 +140,34 @@ public:
   */
   Eigen::Vector2d CellCentroid(unsigned int cellInd) const;
 
+  /** Computes the weighted center of mass of the cell, i.e.,
+  \f[
+  C = \frac{\int_\Omega x \rho(x) dx}{\int_\Omega \rho(x) dx}
+  \f]
+
+  @param[in] cellInd The index of the Laguerre cell of interest.
+  @param[in] dist The density (discretized onto grid cells) defining \f$\rho(x)\f$.
+  */
+  Eigen::Vector2d CellCentroid(unsigned int cellInd, std::shared_ptr<Distribution2d> const& dist) const;
+
   /** Returns the area of one of the Laguerre cells. */
   double CellArea(unsigned int cellInd) const;
+
+  /** Returns the weighted cell area (i.e., probability) of one Laguerre cell. */
+  double CellArea(unsigned int cellInd, std::shared_ptr<Distribution2d> const& dist) const;
 
   /** Repeatedly calls CellCentroid to compute the centers of mass for all
       Laguerre cells.  Column $i$ of the output matrix contains the centroid of
       the ith Laguerre cell.
+      @param[in] dist (Optional) Discretized density.  If provided, the centroids will be centers of mass wrt to this density.
   */
-  Eigen::Matrix2Xd Centroids() const;
+  Eigen::Matrix2Xd Centroids(std::shared_ptr<Distribution2d> const& dist=nullptr) const;
 
-  /** Repeatedly calls CellArea to compute the areas for all Laguerre cells. */
-  Eigen::VectorXd Areas() const;
+  /** Repeatedly calls CellArea to compute the areas for all Laguerre cells.
+      @param[in] dist (Optional) Discretized density.  If provided, the mass of
+                 each cell obtained by integrating this density will be returned.
+  */
+  Eigen::VectorXd Areas(std::shared_ptr<Distribution2d> const& dist=nullptr) const;
 
   /** Returns the seed points that were used to construct the Laguerre diagram. */
   Eigen::Matrix2Xd SeedPts() const;

@@ -621,3 +621,25 @@ Eigen::VectorXd SemidiscreteOT::SolveSubProblem(double obj,
 
   return z;
 }
+
+
+std::shared_ptr<LaguerreDiagram> SemidiscreteOT::BuildCentroidal(std::shared_ptr<Distribution2d> const& distIn,
+                                                                 Eigen::Matrix2Xd                const& initialPoints,
+                                                                 Eigen::VectorXd                 const& pointProbs,
+                                                                 unsigned int                           maxIts,
+                                                                 double                                 tol)
+{
+
+
+}
+
+
+std::shared_ptr<LaguerreDiagram> SemidiscreteOT::BuildCentroidal(std::shared_ptr<Distribution2d> const& dist,
+                                                                 unsigned int                           numPts,
+                                                                 unsigned int                           maxIts,
+                                                                 double                                 tol)
+{
+  // Eigen::Matrix2Xd initialPts = LaguerreDiagram::LatinHypercubeSample(dist->Grid()->, numPts);
+  // Eigen::VectorXd probs = (1.0/numPts)*Eigen::VectorXd::Ones(numPts);
+  // return BuildCentroidal(dist, initialPts, probs, maxIts, tol);
+}

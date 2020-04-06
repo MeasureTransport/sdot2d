@@ -24,6 +24,10 @@ RegularGrid::RegularGrid(BoundingBox const& bbox,
 
 };
 
+Eigen::Vector2d RegularGrid::Center(unsigned int xInd, unsigned int yInd) const
+{
+  return {(xInd+0.5)*dx + xMin, (yInd+0.5)*dy + yMin};
+}
 
 unsigned int RegularGrid::NumCells(int dim) const
 {

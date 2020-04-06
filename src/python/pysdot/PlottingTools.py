@@ -7,8 +7,9 @@ from matplotlib.collections import PatchCollection
 import matplotlib.pyplot as plt
 
 
-def PlotDiagram(lagDiag, ax):
-    """ Plots the cells, cell centroids, and seeds points from a Laguerre diagram. """
+def PlotDiagram(lagDiag, ax, **kwargs):
+    """ Plots the cells, cell centroids, and seeds points from a Laguerre diagram.
+         """
 
     patches = []
     for cellInd in range(lagDiag.NumCells()):
@@ -16,12 +17,21 @@ def PlotDiagram(lagDiag, ax):
         patches.append( Polygon(verts.T) )
 
     #colors = list(range(lagDiag.NumCells()))
-    p = PatchCollection(patches, facecolor='gray',edgecolor='k', alpha=0.4)
-    #p.set_array(np.array(colors))
+    p = PatchCollection(patches, facecolor='gray', edgecolor='k', alpha=0.6)
+
+    if('cell_colors' in kwargs):
+        cell_colors = np.array(kwargs['cell_colors'])
+        assert(cell_colors.shape[0]==lagDiag.NumCells());
+        p.set_array(cell_colors)
     ax.add_collection(p)
     #fig.colorbar(p, ax=ax)
 
-    centroids = lagDiag.Centroids()
+    centroids = None
+    if('distribution' in kwargs):
+        centroids = lagDiag.Centroids(kwargs['distribution'])
+    else:
+        centroids = lagDiag.Centroids()
+
     seeds = lagDiag.SeedPts()
 
     # Draw lines between each centroid and seed point
@@ -39,7 +49,7 @@ def PlotDiagram(lagDiag, ax):
                        Line2D([0], [0], marker='o', color='w', markerfacecolor='b', markersize=10, label='Centroids'),
                        Line2D([0], [0], marker='o', color='w', markerfacecolor='k', markersize=10, label='Seeds')]
 
-    ax.legend(handles=legend_elements, bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+    ax.legend(handles=legend_elements, bbox_to_anchor=(0., 0.95, 1., .102), loc=3,
        ncol=3, mode="expand", borderaxespad=0.)
 
     bbox = lagDiag.BoundBox()
