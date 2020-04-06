@@ -54,7 +54,10 @@ PYBIND11_MODULE(_pysdot, m) {
     .def("Centroids", &LaguerreDiagram::Centroids)
     .def("CellArea", &LaguerreDiagram::CellArea)
     .def("Areas", &LaguerreDiagram::Areas)
-    .def("BoundBox", &LaguerreDiagram::BoundBox);
+    .def("BoundBox", &LaguerreDiagram::BoundBox)
+    .def_static("BuildCentroidal", (std::shared_ptr<LaguerreDiagram> (*)(BoundingBox const&, unsigned int, unsigned int, double)) &LaguerreDiagram::BuildCentroidal, py::arg("bbox"), py::arg("numPts"), py::arg("maxIts")=200, py::arg("tol")=1e-3)
+    .def_static("BuildCentroidal", (std::shared_ptr<LaguerreDiagram> (*)(BoundingBox const&, Eigen::Matrix2Xd const&, Eigen::VectorXd const&, unsigned int, double)) &LaguerreDiagram::BuildCentroidal, py::arg("bbox"), py::arg("points"), py::arg("prices"), py::arg("maxIts")=200, py::arg("tol")=1e-3);
+
 
   py::class_<Distribution2d, std::shared_ptr<Distribution2d>>(m,"Distribution2d")
     .def("Density", &Distribution2d::Density)

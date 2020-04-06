@@ -2,6 +2,8 @@
 
 // standard includes
 #include <iostream>
+#include <random>
+#include <chrono>
 
 // Additional CGAL includes
 #include <CGAL/squared_distance_2.h>
@@ -148,6 +150,80 @@ Eigen::Vector2d LaguerreDiagram::CellCentroid(unsigned int cellInd) const
 
   return centroid / polyArea;
 }
+
+
+std::shared_ptr<LaguerreDiagram> LaguerreDiagram::BuildCentroidal(BoundingBox       const& bbox,
+                                                                  Eigen::Matrix2Xd  const& initialPts,
+                                                                  Eigen::VectorXd   const& prices,
+                                                                  unsigned int maxIts,
+                                                                  double tol)
+{
+  assert(prices.size()==initialPts.cols());
+
+  double resid;
+
+  Eigen::Matrix2Xd currPts;
+  Eigen::Matrix2Xd newPts = initialPts;
+
+  std::shared_ptr<LaguerreDiagram> diagram;
+
+  std::cout << "Constructing Centroidal Power diagram with " << prices.size() << " points." << std::endl;
+
+  for(unsigned int i=0; i<maxIts; ++i){
+    std::swap(currPts,newPts);
+
+    diagram = std::make_shared<LaguerreDiagram>(bbox, currPts, prices);
+    newPts = diagram->Centroids();
+
+    resid = (newPts-currPts).cwiseAbs().maxCoeff();
+
+    std::cout << "  After " << i << " iterations, residual = " << resid << std::endl;
+
+    // Check to see if we've converged
+    if(resid<tol){
+      std::cout << "Converged after " << i << " iterations." << std::endl;
+      return diagram;
+    }
+  }
+
+  std::cout << "WARNING: Residual after " << maxIts << " is still " << resid << " which is larger than the specified tolerance of " << tol << "." << std::endl;
+  return diagram;
+}
+
+std::shared_ptr<LaguerreDiagram> LaguerreDiagram::BuildCentroidal(BoundingBox const& bbox,
+                                                                  unsigned int       numPts,
+                                                                  unsigned int maxIts,
+                                                                  double tol)
+{
+    double dx = (bbox.xMax - bbox.xMin)/numPts;
+    double dy = (bbox.yMax - bbox.yMin)/numPts;
+
+    // Latin hypercube sampling
+    std::vector<double> xInds(numPts);
+    std::vector<double> yInds(numPts);
+    for(unsigned int i=0; i<numPts; ++i){
+      xInds[i] = i;
+      yInds[i] = i;
+    }
+
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::default_random_engine rg(seed);
+    std::uniform_real_distribution<double> u(0.0,1.0);
+
+    std::shuffle(xInds.begin(), xInds.end(), rg);
+    std::shuffle(yInds.begin(), yInds.end(), rg);
+
+    // Generate the points
+    Eigen::Matrix2Xd initialPoints(2,numPts);
+    for(unsigned int i=0; i<numPts; ++i){
+      initialPoints(0,i) = bbox.xMin + dx*(u(rg)+xInds[i]);
+      initialPoints(1,i) = bbox.yMin + dy*(u(rg)+yInds[i]);
+    }
+
+    return BuildCentroidal(bbox, initialPoints, Eigen::VectorXd::Ones(numPts), maxIts, tol);
+}
+
+
 
 // void LaguerreDiagram::CreateBoundaryPolygon(Eigen::Matrix2Xd const& bndryPts)
 // {

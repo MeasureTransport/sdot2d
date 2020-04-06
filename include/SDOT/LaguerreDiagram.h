@@ -75,6 +75,34 @@ public:
                   Eigen::VectorXd  const& costs);
 
 
+  /** Creates a centroidal Voronoi/power diagram using Lloyd's algorithm.
+      @param[in] bbox A bounding box over the region of interest.
+      @param[in] initialPts The points used to construct the initial diagram.
+      @param[in] prices A vector of prices for each point.  If all the prices are
+                        a Voronoi diagram is constructed.
+      @param[in] maxIts The maximum number of iterations in Lloyd's algorithm
+      @param[in] tol Convergence tolerance based on maximum absolute difference
+                     between cell centroids and seed points.
+  */
+  static std::shared_ptr<LaguerreDiagram> BuildCentroidal(BoundingBox const& bbox,
+                                                          Eigen::Matrix2Xd  const& initialPts,
+                                                          Eigen::VectorXd  const& prices,
+                                                          unsigned int maxIts=200,
+                                                          double tol=1e-3);
+
+  /** Creates a centroidal Voronoi/Power diagram using Lloyd's algorithm.  Initializes
+      the points with latin hypercube sampling.
+      @param[in] bbox The bounding box around the domain of interest.
+      @param[in] numPts The number of points in the diagram.
+      @param[in] maxIts The maximum number of iterations in Lloyd's algorithm
+      @param[in] tol Convergence tolerance based on maximum absolute difference
+                     between cell centroids and seed points.
+  */
+  static std::shared_ptr<LaguerreDiagram> BuildCentroidal(BoundingBox const& bbox,
+                                                          unsigned int       numPts,
+                                                          unsigned int maxIts=200,
+                                                          double tol=1e-3);
+
   /** Returns a CGAL Polygon_2 object representing one of the Laguerre cells. */
   std::shared_ptr<Polygon_2> const& GetCell(int ind) const{return laguerreCells.at(ind);};
 
