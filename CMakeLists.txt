@@ -8,7 +8,8 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Set c++ compiler flags
-set(CMAKE_CXX_FLAGS "-O2 -std=c++11")
+set(CMAKE_CXX_FLAGS "-O2 -std=c++11 -Wno-nonportable-include-path -Wno-#pragma-messages")
+set(CMAKE_BUILD_TYPE Release)
 
 # Set the source files for the main SDOT library
 set(LibrarySources
@@ -25,11 +26,21 @@ set(WrapperSources
     src/PythonBindings.cpp
 )
 
+# Find CGAL
+find_package(CGAL REQUIRED)
+find_package(GMP)
+find_package(MPFR)
 
-include_directories(include)
+include_directories(include ${CGAL_INCLUDE_DIRS})
+set(ExternalLibraries ${CGAL_LIBRARY} ${GMP_LIBRARIES} ${MPFR_LIBRARIES})
 
-set(ExternalLibraries
-    gmp;CGAL;mpfr)
+# If we weren't able to find GMP or MPFR, just add the library names and hope for the best
+if(NOT GMP_FOUND)
+  set(ExternalLibraries ${ExternalLibraries} -lgmp)
+endif()
+if(NOT MPFR_FOUND)
+  set(ExternalLibraries ${ExternalLibraries} -lmpfr)
+endif()
 
 add_library(sdot SHARED ${LibrarySources})
 target_link_libraries(sdot ${ExternalLibraries})
@@ -45,5 +56,17 @@ target_link_libraries(ComputeSDOT sdot ${OtherLibraries})
 set(PYBIND11_CPP_STANDARD -std=c++11)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/pybind11)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/pybind11/include)
-pybind11_add_module(pysdot SHARED NO_EXTRAS ${WrapperSources})
-target_link_libraries(pysdot sdot ${OtherLibraries})
+pybind11_add_module(_pysdot SHARED NO_EXTRAS ${WrapperSources})
+target_link_libraries(_pysdot PRIVATE sdot ${OtherLibraries})
+
+
+# Add installation directives
+install(TARGETS sdot _pysdot LIBRARY DESTINATION lib)
+
+install(DIRECTORY src/python
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/lib"
+        FILES_MATCHING PATTERN "*.py")
+
+install(DIRECTORY include/SDOT
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/include"
+	      FILES_MATCHING PATTERN "*.h")

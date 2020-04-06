@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
 {
   LaguerreDiagramTest();
 
-  int numPts = 1000;
+  int numPts = 100;
 
   Eigen::VectorXd prices = Eigen::VectorXd::Ones(numPts);
 

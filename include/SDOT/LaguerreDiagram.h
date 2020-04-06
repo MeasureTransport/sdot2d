@@ -74,6 +74,7 @@ public:
                   Eigen::Matrix2Xd  const& pts,
                   Eigen::VectorXd  const& costs);
 
+
   /** Returns a CGAL Polygon_2 object representing one of the Laguerre cells. */
   std::shared_ptr<Polygon_2> const& GetCell(int ind) const{return laguerreCells.at(ind);};
 
@@ -104,11 +105,17 @@ public:
   */
   Eigen::Vector2d CellCentroid(unsigned int cellInd) const;
 
+  /** Returns the area of one of the Laguerre cells. */
+  double CellArea(unsigned int cellInd) const;
+
   /** Repeatedly calls CellCentroid to compute the centers of mass for all
       Laguerre cells.  Column $i$ of the output matrix contains the centroid of
       the ith Laguerre cell.
   */
   Eigen::Matrix2Xd Centroids() const;
+
+  /** Repeatedly calls CellArea to compute the areas for all Laguerre cells. */
+  Eigen::VectorXd Areas() const;
 
   /** Returns the seed points that were used to construct the Laguerre diagram. */
   Eigen::Matrix2Xd SeedPts() const;

@@ -13,7 +13,7 @@ namespace py = pybind11;
 using namespace sdot;
 
 
-PYBIND11_MODULE(pysdot, m) {
+PYBIND11_MODULE(_pysdot, m) {
 
   py::class_<BoundingBox, std::shared_ptr<BoundingBox>>(m, "BoundingBox")
     .def(py::init<double,double,double,double>())
@@ -52,6 +52,8 @@ PYBIND11_MODULE(pysdot, m) {
     .def("GetCellVertices", &LaguerreDiagram::GetCellVertices)
     .def("CellCentroid", &LaguerreDiagram::CellCentroid)
     .def("Centroids", &LaguerreDiagram::Centroids)
+    .def("CellArea", &LaguerreDiagram::CellArea)
+    .def("Areas", &LaguerreDiagram::Areas)
     .def("BoundBox", &LaguerreDiagram::BoundBox);
 
   py::class_<Distribution2d, std::shared_ptr<Distribution2d>>(m,"Distribution2d")
@@ -64,5 +66,7 @@ PYBIND11_MODULE(pysdot, m) {
   py::class_<SemidiscreteOT, std::shared_ptr<SemidiscreteOT>>(m, "SemidiscreteOT")
     .def(py::init<std::shared_ptr<Distribution2d> const&, Eigen::MatrixXd const&, Eigen::VectorXd const&>())
     .def("Solve", &SemidiscreteOT::Solve)
-    .def("Diagram", &SemidiscreteOT::Diagram);
+    .def("Diagram", &SemidiscreteOT::Diagram)
+    .def("PointGradient", (Eigen::Matrix2Xd (SemidiscreteOT::*)(LaguerreDiagram const&) const) &SemidiscreteOT::PointGradient)
+    .def("PointGradient", (Eigen::Matrix2Xd (SemidiscreteOT::*)() const) &SemidiscreteOT::PointGradient);
 }

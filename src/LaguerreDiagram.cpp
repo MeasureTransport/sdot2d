@@ -46,6 +46,47 @@ Eigen::Matrix2Xd LaguerreDiagram::GetCellVertices(int ind) const
   return points;
 }
 
+Eigen::VectorXd LaguerreDiagram::Areas() const
+{
+  Eigen::VectorXd areas(NumCells());
+  for(int i=0; i<areas.size();++i)
+    areas(i) = CellArea(i);
+  return areas;
+}
+
+
+double LaguerreDiagram::CellArea(unsigned int cellInd) const
+{
+  double x1, x2, y1, y2, x3, y3;
+
+  auto beginVert = laguerreCells.at(cellInd)->vertices_begin();
+  auto vert1 = beginVert;
+  vert1++;
+  auto vert2 = vert1;
+  vert2++;
+
+  x1 = CGAL::to_double( beginVert->x() );
+  y1 = CGAL::to_double( beginVert->y() );
+
+  //interArea = gridCellDens*CGAL::to_double( overlapPoly->area() );
+  double polyArea = 0.0;
+  double triArea;
+
+  for(; vert2!=laguerreCells.at(cellInd)->vertices_end(); vert2++, vert1++)
+  {
+    x2 = CGAL::to_double( vert1->x() );
+    y2 = CGAL::to_double( vert1->y() );
+    x3 = CGAL::to_double( vert2->x() );
+    y3 = CGAL::to_double( vert2->y() );
+
+    triArea = 0.5*std::abs((x2*y1-x1*y2)+(x3*y2-x2*y3)+(x1*y3-x3*y1));
+    polyArea += triArea;
+  }
+
+  return polyArea;
+}
+
+
 Eigen::Matrix2Xd LaguerreDiagram::Centroids() const
 {
   Eigen::Matrix2Xd centroids(2,NumCells());

@@ -47,6 +47,20 @@ std::tuple<double,Eigen::VectorXd, Eigen::SparseMatrix<double>> SemidiscreteOT::
     return std::make_tuple(obj,grad,hess);
 }
 
+Eigen::Matrix2Xd SemidiscreteOT::PointGradient() const
+{
+  return PointGradient(*lagDiag);
+}
+
+Eigen::Matrix2Xd SemidiscreteOT::PointGradient(LaguerreDiagram const& lagDiag) const
+{
+  Eigen::Matrix2Xd seeds = lagDiag.SeedPts();
+  Eigen::VectorXd areas = lagDiag.Areas();
+  Eigen::Matrix2Xd centroids = lagDiag.Centroids();
+
+  return (seeds-centroids)*areas.asDiagonal();
+}
+
 
 std::pair<double,Eigen::VectorXd> SemidiscreteOT::ComputeGradient(Eigen::VectorXd const& prices,
                                                                   LaguerreDiagram const& lagDiag) const

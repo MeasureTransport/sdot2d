@@ -32,6 +32,34 @@ namespace sdot{
     */
     std::tuple<double, Eigen::VectorXd, Eigen::SparseMatrix<double>> Objective(Eigen::VectorXd const& prices) const;
 
+    /** In Xin et al., "Centroidal Power Diagrams with Capacity Constraints: Computation, Applications, and Extension",
+        the authors wish to minimize the maximum of the Kantorovich dual with
+        respect to the point locations.  We will call this the centroidal objective
+        because it was used in the Xin et al. paper to construct centroidal
+        power diagrams.    This function, PointGradien(), computes the gradient
+        of the centroidal objective with respect to the point locations.  The
+        form of the gradient is given in (9) of Xin et al:
+        \f[
+        \nabla_{x_i}  F(X,W^{\ast}(X)) = \int_{GD(W^{|ast})_i} \nabla_{x_i} d(x,x_i) dx.
+        \f]
+        In our case, \f$d(x,x_i)\f$ = \frac{1}{2} (x-x_i)^2, so
+        \f[
+        \nabla_{x_i} d(x,x_i) = x_i-x.
+        \f]
+        Thus,
+        \fbegin{eqnarray*}
+        \int_{GD(W^{|ast})_i} \nabla_{x_i} d(x,x_i) dx &=& x_i \int_{GD(W^{|ast})_i}  dx - \int_{GD(W^{|ast})_i} x dx\\
+        &=& A_i ( x_i - x_{ci}),
+        \fend{eqnarray*}
+        where \f$A_i\f$ is the area of the \f$i^{th}\f$ Laguerre cell \f$i\f$ and
+        \f$x_{ci}\f$ is the centroid of the cell.
+
+        @param[in] The optimal Laguerre diagram we wish to use to compute the gradient wrt each x_i
+        @return A matrix of derivatives wrt to each seed point in the Laguerre diagram.  output(0,i) contains d/dx_i and output(1,i) contains d/dy_i
+    */
+    Eigen::Matrix2Xd PointGradient(LaguerreDiagram const& lagDiag) const;
+
+    Eigen::Matrix2Xd PointGradient() const;
 
     /** Solves the dual OT problem for the prices.  Uses a Trust region newton method.
     */
