@@ -1,4 +1,6 @@
-FROM debian:latest
+FROM jupyter/scipy-notebook
+
+USER root
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -14,6 +16,5 @@ RUN apt-get update \
         libcgal-dev \
     && rm -rf /var/lib/apt/lists/*
 
-RUN useradd -rm -d /home/cgal -s /bin/bash cgal
-USER cgal
-WORKDIR /home/cgal
+USER $NB_UID
+WORKDIR /home/sdot

@@ -1,3 +1,6 @@
+#ifndef LAGUERREDIAGRAM_H
+#define LAGUERREDIAGRAM_H
+
 #include <Eigen/Core>
 
 #include <vector>
@@ -67,7 +70,19 @@ public:
                   Eigen::Matrix2Xd  const& pts,
                   Eigen::VectorXd  const& costs);
 
+  LaguerreDiagram(BoundingBox const& bbox,
+                  Eigen::Matrix2Xd  const& pts,
+                  Eigen::VectorXd  const& costs);
+
+  /** Returns a CGAL Polygon_2 object representing one of the Laguerre cells. */
   std::shared_ptr<Polygon_2> const& GetCell(int ind) const{return laguerreCells.at(ind);};
+
+  /**
+  Returns the vertices of a single cell in the Laguerre diagram.
+  @param[in] ind The index of the cell
+  @return A matrix containing cell vertices.  Each column is a point in 2d.
+  */
+  Eigen::Matrix2Xd GetCellVertices(int ind) const;
 
 
   /**
@@ -78,14 +93,38 @@ public:
   */
   std::vector<std::tuple<unsigned int, Point_2, Point_2>> const& InternalEdges(unsigned int cellInd) const{return internalEdges.at(cellInd);};
 
+  /** Returns the center of mass of the cell.  Using in Lloyd's algorithm for
+      centroidal diagrams.  For a polygon covering a region $\Omega$, the center
+      of mass is given by $\int_\Omega x dx / \int_\Omega dx$, where $x\in\mathbb{R}^2$ is the position.
+      The GetCellCenter function computes this integral by breaking the convex
+      polygon into triangles and computing summing the integrals over each
+      triangle.
+      @param[in] cellInd The index of the Laguerre cell of interest.
+      @return The center of mass of the Laguerre cell.
+  */
+  Eigen::Vector2d CellCentroid(unsigned int cellInd) const;
+
+  /** Repeatedly calls CellCentroid to compute the centers of mass for all
+      Laguerre cells.  Column $i$ of the output matrix contains the centroid of
+      the ith Laguerre cell.
+  */
+  Eigen::Matrix2Xd Centroids() const;
+
+  /** Returns the seed points that were used to construct the Laguerre diagram. */
+  Eigen::Matrix2Xd SeedPts() const;
+
+  /** Returns the number of Laguerre cells. */
   int NumCells() const{return laguerreCells.size();};
 
+  /** Returns the underlying CGAL PowerDiagram object. */
   PowerDiagram* BaseDiagram(){return &unboundedDiagram;};
 
   struct ConstructionException : public std::runtime_error
   {
     ConstructionException(std::string msg) : std::runtime_error(msg.c_str()){};
   };
+
+  BoundingBox const& BoundBox() const{return bbox;};
 
 private:
 
@@ -118,6 +157,7 @@ private:
 
   /// Stores a polygon defining the bounds of the domain of interest
   BoundingBox bbox;
+
   // double xBndLeft, xBndRight, yBndBottom, yBndTop;
 //  Polygon_2 boundPoly;
 
@@ -134,3 +174,5 @@ private:
 };
 
 } // namespace sdot
+
+#endif

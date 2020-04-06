@@ -17,6 +17,14 @@ RegularGrid::RegularGrid(double       xMin_, double       yMin_,
   assert(yMin<yMax);
 };
 
+RegularGrid::RegularGrid(BoundingBox const& bbox,
+                         unsigned int Nx_,
+                         unsigned int Ny_) : RegularGrid(bbox.xMin, bbox.yMin, bbox.xMax, bbox.yMax, Nx_, Ny_)
+{
+
+};
+
+
 unsigned int RegularGrid::NumCells(int dim) const
 {
   if(dim==0){

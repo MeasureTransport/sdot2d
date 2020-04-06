@@ -23,6 +23,91 @@ LaguerreDiagram::LaguerreDiagram(double xBndLeftIn,   double xBndRightIn,
   CreateBoundedCells(pts);
 }
 
+
+LaguerreDiagram::LaguerreDiagram(BoundingBox const& bbox,
+                                 Eigen::Matrix2Xd  const& pts,
+                                 Eigen::VectorXd  const& costs) : LaguerreDiagram(bbox.xMin, bbox.xMax, bbox.yMin, bbox.yMax, pts, costs)
+{
+}
+
+
+Eigen::Matrix2Xd LaguerreDiagram::GetCellVertices(int ind) const
+{
+  auto& poly = laguerreCells.at(ind);
+  Eigen::Matrix2Xd points(2,poly->size());
+
+  // Copy the vertices from the polygon to the Eigen::Matrix
+  unsigned int col = 0;
+  for(auto vertIter = poly->vertices_begin(); vertIter!=poly->vertices_end(); ++vertIter, ++col){
+    points(0,col) = CGAL::to_double( vertIter->x() );
+    points(1,col) = CGAL::to_double( vertIter->y() );
+  }
+
+  return points;
+}
+
+Eigen::Matrix2Xd LaguerreDiagram::Centroids() const
+{
+  Eigen::Matrix2Xd centroids(2,NumCells());
+
+  for(int i=0; i<NumCells(); ++i){
+    centroids.col(i) = CellCentroid(i);
+  }
+
+  return centroids;
+}
+
+
+Eigen::Matrix2Xd LaguerreDiagram::SeedPts() const
+{
+  Eigen::Matrix2Xd pts(2,NumCells());
+
+  for(auto faceIter = unboundedDiagram.faces_begin(); faceIter!=unboundedDiagram.faces_end(); ++faceIter){
+    auto pt = faceIter->dual();// ->info()) = *faceIter;
+
+    unsigned int ind = pt->info();
+    pts(0,ind) = CGAL::to_double(pt->point().x());
+    pts(1,ind) = CGAL::to_double(pt->point().y());
+  }
+
+  return pts;
+}
+
+Eigen::Vector2d LaguerreDiagram::CellCentroid(unsigned int cellInd) const
+{
+  double x1, x2, y1, y2, x3, y3;
+
+  auto beginVert = laguerreCells.at(cellInd)->vertices_begin();
+  auto vert1 = beginVert;
+  vert1++;
+  auto vert2 = vert1;
+  vert2++;
+
+  x1 = CGAL::to_double( beginVert->x() );
+  y1 = CGAL::to_double( beginVert->y() );
+
+  //interArea = gridCellDens*CGAL::to_double( overlapPoly->area() );
+  double polyArea = 0.0;
+  double triArea;
+  Eigen::Vector2d centroid = Eigen::Vector2d::Zero(2);
+
+  for(; vert2!=laguerreCells.at(cellInd)->vertices_end(); vert2++, vert1++)
+  {
+    x2 = CGAL::to_double( vert1->x() );
+    y2 = CGAL::to_double( vert1->y() );
+    x3 = CGAL::to_double( vert2->x() );
+    y3 = CGAL::to_double( vert2->y() );
+
+    triArea = 0.5*std::abs((x2*y1-x1*y2)+(x3*y2-x2*y3)+(x1*y3-x3*y1));
+    polyArea += triArea;
+
+    centroid(0) += triArea*(x1+x2+x3)/3.0;
+    centroid(1) += triArea*(y1+y2+y3)/3.0;
+  }
+
+  return centroid / polyArea;
+}
+
 // void LaguerreDiagram::CreateBoundaryPolygon(Eigen::Matrix2Xd const& bndryPts)
 // {
 //   // Set up the domain boundary.  Points should go around the bounding polygon in counter-clockwise order

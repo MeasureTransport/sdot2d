@@ -6,6 +6,7 @@
 
 #include <vector>
 #include <memory>
+#include <deque>
 
 // standard includes
 #include <iostream>

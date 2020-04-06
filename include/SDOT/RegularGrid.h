@@ -1,6 +1,8 @@
 #ifndef REGULARGRID_H_
 #define REGULARGRID_H_
 
+#include "SDOT/BoundingBox.h"
+
 namespace sdot {
 
 /** Class for defining a regular grid in 2d. */
@@ -10,6 +12,10 @@ public:
   RegularGrid(double       xMin_, double          yMin_,
               double       xMax_, double          yMax_,
               unsigned int Nx_,   unsigned int    Ny_);
+
+  RegularGrid(BoundingBox const& bbox,
+              unsigned int Nx_,
+              unsigned int    Ny_);
 
   /** Returns the number of cells in each direction (dim=0,1) or the total number
       of cells in the grid (dim=-1).  Defaults to total number in grid.
