@@ -12,6 +12,7 @@ conda install -c anaconda cmake
 
 1. Clone SDOT and dependenct repositories:
 ```bash
+git clone --recurse-submodules git@public.git.erdc.dren.mil:sirc/sdot.git
 ```
 
 2. Run CMake to configure SDOT:
