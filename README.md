@@ -6,7 +6,6 @@
 conda install -c conda-forge cgal
 conda install -c anaconda cmake
 ```
-```
 
 1. Clone SDOT and dependenct repositories
 
