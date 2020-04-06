@@ -1,13 +1,11 @@
 # Installation:
 
-0. Install Dependencies
-   a. CGAL:
+0. Install Dependencies:
+1. 
 ```bash
 conda install -c conda-forge cgal
-```
-    b. CMake
-```bash
 conda install -c anaconda cmake
+```
 ```
 
 1. Clone SDOT and dependenct repositories:
