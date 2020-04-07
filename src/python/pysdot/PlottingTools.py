@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 def PlotDiagram(lagDiag, ax, **kwargs):
     """ Plots the cells, cell centroids, and seeds points from a Laguerre diagram.
-         """
+    """
 
     patches = []
     for cellInd in range(lagDiag.NumCells()):

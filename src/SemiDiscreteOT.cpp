@@ -424,7 +424,7 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd const& 
   double trustRadius = 1.0;
   const unsigned int maxEvals = 100;
   const double xtol_abs = 1e-6*std::sqrt(double(dim));
-  const double gtol_abs = 1e-4*std::sqrt(double(dim));
+  const double gtol_abs = 2e-4*std::sqrt(double(dim));
   const double ftol_abs = 1e-11;
   const double acceptRatio = 1e-4;//0.1;
 
