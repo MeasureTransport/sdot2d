@@ -111,7 +111,6 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT::ComputeGradient(Eigen::VectorX
      // The probability in this grid cell
      gridCellDens = dist->Density(xInd,yInd);
 
-
      double interArea = 0.0;
      //double interObj = 0.0;
 
@@ -418,10 +417,14 @@ double SemidiscreteOT::TriangleIntegral(double x1, double y1,
 
 std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd const& prices0, unsigned int printLevel)
 {
+  assert(prices0.size()==discrPts.cols());
+  const unsigned int dim = prices0.size();
+
   // Trust region approach with a double dogleg step
   double trustRadius = 1.0;
-  const unsigned int maxEvals = 500;
-  const double xtol_abs = 1e-6;
+  const unsigned int maxEvals = 100;
+  const double xtol_abs = 1e-6*std::sqrt(double(dim));
+  const double gtol_abs = 1e-4*std::sqrt(double(dim));
   const double ftol_abs = 1e-11;
   const double acceptRatio = 1e-4;//0.1;
 
@@ -431,8 +434,7 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd const& 
   const double shrinkRate = 0.25;
   const double maxRadius = 10;
 
-  assert(prices0.size()==discrPts.cols());
-  const unsigned int dim = prices0.size();
+
 
   double fval, newF, gradNorm, newGradNorm;
   Eigen::VectorXd grad, newGrad;
@@ -456,7 +458,7 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd const& 
 
   if(printLevel>0){
     std::cout << "Using NewtonTrust optimizer..." << std::endl;
-    std::cout << "  Iteration, TrustRadius,       ||g||" << std::endl;
+    std::cout << "  Iteration, TrustRadius,       ||g||,   ||g||/sqrt(dim)" << std::endl;
   }
 
   for(int it=0; it<maxEvals; ++it) {
@@ -465,12 +467,12 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd const& 
     hess *= -1.0;
 
     if(printLevel>0){
-      std::printf("  %9d, %11.2e,  %5.3e\n", it, trustRadius, grad.norm());
+      std::printf("  %9d, %11.2e,  %5.3e, %5.3e\n", it, trustRadius, gradNorm, gradNorm/std::sqrt(double(dim)));
     }
 
-    if(gradNorm < xtol_abs){
+    if(gradNorm < gtol_abs){
       if(printLevel>0){
-        std::printf("Terminating because gradient norm (%4.2e) is smaller than xtol_abs (%4.2e).\n", gradNorm, xtol_abs);
+        std::printf("Terminating because gradient norm (%4.2e) is smaller than gtol_abs (%4.2e).\n", gradNorm, gtol_abs);
       }
       return std::make_pair(x,fval);
     }
@@ -561,7 +563,7 @@ Eigen::VectorXd SemidiscreteOT::SolveSubProblem(double obj,
                                                 Eigen::Ref<const Eigen::SparseMatrix<double>> const& hess,
                                                 double trustRadius) const
 {
-  const double trustTol = 1e-10;
+  const double trustTol = 1e-12;
   const unsigned int dim = grad.size();
 
   // Current estimate of the subproblem minimum
@@ -654,19 +656,21 @@ std::shared_ptr<LaguerreDiagram> SemidiscreteOT::BuildCentroidal(std::shared_ptr
 
   std::cout << "Computing constrained centroidal diagram." << std::endl;
   for(unsigned int i=0; i<maxIts; ++i){
-    ot->Solve(Eigen::VectorXd::Ones(numPts),0);
+    assert(ot);
+    ot->Solve(Eigen::VectorXd::Ones(numPts),2);
+
     newPts = ot->Diagram()->Centroids(dist);
     resid = (newPts - pts).cwiseAbs().maxCoeff();
 
     if(resid<tol){
-      std::cout << "Converged with a residual of " << resid << std::endl;
+      std::cout << "Converged with a final step of " << resid << std::endl;
       return ot->Diagram();
     }
 
     pts = newPts;
     ot->SetPoints(pts);
-    
-    std::cout << "  After " << i << " iterations, resid = " << resid << std::endl;
+
+    std::cout << "  After " << i << " iterations, change in position = " << resid << std::endl;
   }
 
   std::cout << "WARNING: Did not converge to constrained centroidal diagram." << std::endl;

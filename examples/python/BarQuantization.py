@@ -11,6 +11,8 @@ Ns = [50,50]
 bbox = ot.BoundingBox(xbnds[0],xbnds[1],ybnds[0],ybnds[1])
 
 grid = ot.RegularGrid(bbox, Ns[0], Ns[1])
+
+# Create the density, which is one inside a rectangular region and near zero outside
 densVals = np.ones(Ns)
 for i in range(Ns[0]):
     for j in range(Ns[1]):
@@ -20,10 +22,14 @@ for i in range(Ns[0]):
         else:
             densVals[i,j] = 1e-4
 
+# Construct the centroidal diagram with capacity constraints
 dist = ot.DiscretizedDistribution(grid,densVals)
 diag = ot.SemidiscreteOT.BuildCentroidal(dist, numPts)
 
+# Visualize the results, using the area of each cell as a color
 areas = diag.Areas(dist)
+print('Minimum area = ', np.min(areas))
+print('Maximum area = ', np.max(areas))
 
 # Plot the resulting centroidal Voronoi diagram
 fig, axs = plt.subplots(ncols=2,figsize=(14,6))
