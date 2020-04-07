@@ -2,8 +2,6 @@ import pysdot as ot
 import numpy as np
 import matplotlib.pyplot as plt
 
-
-
 numPts = 100
 
 xbnds = [0.0,1.0] # minimum and maximum x values
@@ -37,7 +35,7 @@ fig, axs = plt.subplots(ncols=2,figsize=(14,6))
 ot.PlotDiagram(diag, axs[0], distribution=dist, cell_colors=areas)
 axs[0].set_title('Weighted CVD')
 
-axs[1].imshow(dens,extent=[xbnds[0],xbnds[1],ybnds[0],ybnds[1]],origin='lower',alpha=0.8)
+axs[1].imshow(dens.T,extent=[xbnds[0],xbnds[1],ybnds[0],ybnds[1]],origin='lower',alpha=0.8)
 axs[1].set_title('Density')
 
 plt.show()

@@ -63,13 +63,16 @@ namespace sdot{
 
     /** Solves the dual OT problem for the prices.  Uses a Trust region newton method.
     */
-    std::pair<Eigen::VectorXd, double> Solve(Eigen::VectorXd const& prices0);
+    std::pair<Eigen::VectorXd, double> Solve(Eigen::VectorXd const& prices0,
+                                             unsigned int printLevel=2);
 
     /** Returns the Laguerre diagram that was constructed during Solve.  If the
     diagram hasn't  been constructed yet, the returned shared_ptr will be a nullptr.
     */
     std::shared_ptr<LaguerreDiagram> const& Diagram() const{return lagDiag;}
 
+    /** Resets the locations of the discrete points. */
+    void SetPoints(Eigen::Matrix2Xd const& newPts);
 
     static std::shared_ptr<LaguerreDiagram> BuildCentroidal(std::shared_ptr<Distribution2d> const& distIn,
                                                             Eigen::Matrix2Xd                const& initialPoints,

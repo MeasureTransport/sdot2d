@@ -16,13 +16,27 @@ SemidiscreteOT::SemidiscreteOT(std::shared_ptr<Distribution2d> const& distIn,
 {
   assert(discrPtsIn.cols()==discrProbsIn.size());
 
-  // Check to make suare all the points are inside the grid domain
+  // Check to make sure all the points are inside the grid domain
   for(unsigned int i=0; i<discrPts.cols(); ++i){
     assert(discrPts(0,i)>=grid->xMin);
     assert(discrPts(0,i)<=grid->xMax);
     assert(discrPts(1,i)>=grid->yMin);
     assert(discrPts(1,i)<=grid->yMax);
   }
+}
+
+void SemidiscreteOT::SetPoints(Eigen::Matrix2Xd const& newPts){
+  assert(newPts.cols()==discrProbs.size());
+
+  // Check to make sure all the points are inside the grid domain
+  for(unsigned int i=0; i<newPts.cols(); ++i){
+    assert(newPts(0,i)>=grid->xMin);
+    assert(newPts(0,i)<=grid->xMax);
+    assert(newPts(1,i)>=grid->yMin);
+    assert(newPts(1,i)<=grid->yMax);
+  }
+
+  discrPts = newPts;
 }
 
 std::tuple<double,Eigen::VectorXd, Eigen::SparseMatrix<double>> SemidiscreteOT::Objective(Eigen::VectorXd const& prices) const
@@ -402,12 +416,11 @@ double SemidiscreteOT::TriangleIntegral(double x1, double y1,
 }
 
 
-std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd const& prices0)
+std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd const& prices0, unsigned int printLevel)
 {
   // Trust region approach with a double dogleg step
   double trustRadius = 1.0;
   const unsigned int maxEvals = 500;
-  const unsigned int printLevel =  2;
   const double xtol_abs = 1e-6;
   const double ftol_abs = 1e-11;
   const double acceptRatio = 1e-4;//0.1;
@@ -623,14 +636,41 @@ Eigen::VectorXd SemidiscreteOT::SolveSubProblem(double obj,
 }
 
 
-std::shared_ptr<LaguerreDiagram> SemidiscreteOT::BuildCentroidal(std::shared_ptr<Distribution2d> const& distIn,
+std::shared_ptr<LaguerreDiagram> SemidiscreteOT::BuildCentroidal(std::shared_ptr<Distribution2d> const& dist,
                                                                  Eigen::Matrix2Xd                const& initialPoints,
                                                                  Eigen::VectorXd                 const& pointProbs,
                                                                  unsigned int                           maxIts,
                                                                  double                                 tol)
 {
+  const unsigned int numPts = pointProbs.size();
+  assert(numPts==initialPoints.cols());
 
+  double resid = tol + 1.0;
 
+  Eigen::MatrixXd newPts;
+
+  Eigen::MatrixXd pts = initialPoints;
+  std::shared_ptr<SemidiscreteOT> ot = std::make_shared<SemidiscreteOT>(dist, initialPoints, pointProbs);
+
+  std::cout << "Computing constrained centroidal diagram." << std::endl;
+  for(unsigned int i=0; i<maxIts; ++i){
+    ot->Solve(Eigen::VectorXd::Ones(numPts),0);
+    newPts = ot->Diagram()->Centroids(dist);
+    resid = (newPts - pts).cwiseAbs().maxCoeff();
+
+    if(resid<tol){
+      std::cout << "Converged with a residual of " << resid << std::endl;
+      return ot->Diagram();
+    }
+
+    pts = newPts;
+    ot->SetPoints(pts);
+    
+    std::cout << "  After " << i << " iterations, resid = " << resid << std::endl;
+  }
+
+  std::cout << "WARNING: Did not converge to constrained centroidal diagram." << std::endl;
+  return ot->Diagram();
 }
 
 
@@ -639,7 +679,8 @@ std::shared_ptr<LaguerreDiagram> SemidiscreteOT::BuildCentroidal(std::shared_ptr
                                                                  unsigned int                           maxIts,
                                                                  double                                 tol)
 {
-  // Eigen::Matrix2Xd initialPts = LaguerreDiagram::LatinHypercubeSample(dist->Grid()->, numPts);
-  // Eigen::VectorXd probs = (1.0/numPts)*Eigen::VectorXd::Ones(numPts);
-  // return BuildCentroidal(dist, initialPts, probs, maxIts, tol);
+  BoundingBox bbox(dist->Grid()->xMin, dist->Grid()->xMax, dist->Grid()->yMin, dist->Grid()->yMax);
+  Eigen::Matrix2Xd initialPts = LaguerreDiagram::LatinHypercubeSample(bbox, numPts);
+  Eigen::VectorXd probs = (1.0/numPts)*Eigen::VectorXd::Ones(numPts);
+  return BuildCentroidal(dist, initialPts, probs, maxIts, tol);
 }

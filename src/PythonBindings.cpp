@@ -74,5 +74,8 @@ PYBIND11_MODULE(_pysdot, m) {
     .def("Solve", &SemidiscreteOT::Solve)
     .def("Diagram", &SemidiscreteOT::Diagram)
     .def("PointGradient", (Eigen::Matrix2Xd (SemidiscreteOT::*)(LaguerreDiagram const&) const) &SemidiscreteOT::PointGradient)
-    .def("PointGradient", (Eigen::Matrix2Xd (SemidiscreteOT::*)() const) &SemidiscreteOT::PointGradient);
+    .def("PointGradient", (Eigen::Matrix2Xd (SemidiscreteOT::*)() const) &SemidiscreteOT::PointGradient)
+    .def("SetPoints", &SemidiscreteOT::SetPoints)
+    .def_static("BuildCentroidal", (std::shared_ptr<LaguerreDiagram> (*)(std::shared_ptr<Distribution2d> const&, Eigen::Matrix2Xd const&, Eigen::VectorXd const&, unsigned int, double)) &SemidiscreteOT::BuildCentroidal, py::arg("dist"), py::arg("initialPoints"), py::arg("probs"),py::arg("maxIts")=100,py::arg("tol")=1e-3)
+    .def_static("BuildCentroidal", (std::shared_ptr<LaguerreDiagram> (*)(std::shared_ptr<Distribution2d> const&, unsigned int, unsigned int, double)) &SemidiscreteOT::BuildCentroidal, py::arg("dist"),py::arg("numPts"), py::arg("maxIts")=100,py::arg("tol")=1e-3);
 }
