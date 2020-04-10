@@ -31,7 +31,7 @@ make -j4 install
 4. Add the SDOT paths to your environment variables 
 
 ```bash
-export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH=<Some/Install/Dir>/lib
+export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:<Some/Install/Dir>/lib
 export PYTHONPATH=$PYTHONPATH:<Some/Install/Dir>/lib:<Some/Install/Dir>/lib/python/
 ```
     
