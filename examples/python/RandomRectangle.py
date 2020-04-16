@@ -1,9 +1,6 @@
-
 import pysdot as ot
 import numpy as np
 import matplotlib.pyplot as plt
-
-
 
 numPts = 100
 
@@ -26,7 +23,7 @@ probs = (1.0/numPts)*np.ones(numPts)
 solver = ot.SemidiscreteOT(tgtDens, pts, probs)
 
 initialPrices = np.ones(numPts)
-optPrices, optObj = solver.Solve(initialPrices)
+optPrices, optObj = solver.Solve(initialPrices, 1)
 
 # Plot the optimal Laguerre diagram
 fig, ax = plt.subplots()
