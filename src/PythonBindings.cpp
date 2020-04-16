@@ -71,7 +71,7 @@ PYBIND11_MODULE(_pysdot, m) {
 
   py::class_<SemidiscreteOT, std::shared_ptr<SemidiscreteOT>>(m, "SemidiscreteOT")
     .def(py::init<std::shared_ptr<Distribution2d> const&, Eigen::MatrixXd const&, Eigen::VectorXd const&>())
-    .def("Solve", &SemidiscreteOT::Solve)
+    .def("Solve", &SemidiscreteOT::Solve, py::arg("prices0"), py::arg("printLevel")=2)
     .def("Diagram", &SemidiscreteOT::Diagram)
     .def("PointGradient", (Eigen::Matrix2Xd (SemidiscreteOT::*)(LaguerreDiagram const&) const) &SemidiscreteOT::PointGradient)
     .def("PointGradient", (Eigen::Matrix2Xd (SemidiscreteOT::*)() const) &SemidiscreteOT::PointGradient)
