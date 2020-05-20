@@ -209,6 +209,11 @@ private:
   */
   bool HasInternalTarget(Ccb_halfedge_circulator halfEdge) const;
 
+  /** Returns the vertices on the ends of a halfEdge.  Fills in "large" values
+      for edges whose source or target is at infinity.
+  */
+  std::pair<Point_2,Point_2> GetEdgeVerts(Ccb_halfedge_circulator& halfEdge);
+
   /// The number of points used to construct the Laguere diagram.
   int numPts;
 

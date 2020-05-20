@@ -27,7 +27,7 @@ namespace sdot {
     typedef CGAL::Polygon_2<K>            Polygon_2;
     typedef CGAL::Polygon_with_holes_2<K> Polygon_with_holes_2;
 
-    
+
     BoundingBox(double xmin_, double xmax_,
                 double ymin_, double ymax_);
 

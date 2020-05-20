@@ -416,6 +416,47 @@ bool LaguerreDiagram::HasInternalTarget(Ccb_halfedge_circulator halfEdge) const
   }
 }
 
+std::pair<LaguerreDiagram::Point_2,LaguerreDiagram::Point_2> LaguerreDiagram::GetEdgeVerts(Ccb_halfedge_circulator& halfEdge)
+{
+  bool hasSrc = halfEdge->has_source();
+  bool hasTgt = halfEdge->has_target();
+
+  Point_2 midPt;
+  Vector_2 dir;
+
+  if((!hasSrc)||(!hasTgt)){
+    // Get the node in the triangulation on the other side of this edge
+    auto vt = halfEdge->twin()->face()->dual()->point();
+    auto vs = halfEdge->face()->dual()->point();
+
+    // Compute the direction of dividing line between this cell and the other cell
+    dir = Vector_2(vs.y()-vt.y(), -(vs.x()-vt.x()));
+    dir /= std::sqrt(CGAL::to_double(dir.squared_length()));
+
+    // Find the weighted mid point between the triangulation sites
+    double ts = CGAL::to_double( CGAL::squared_distance(vt.point(), vs.point()).exact() );
+    double h = (0.5/ts)*CGAL::to_double(ts + vs.weight() - vt.weight());
+    midPt = vs.point() + h*(vt.point()-vs.point());
+  }
+
+  Point_2 srcPt;
+  if(hasSrc){
+    srcPt = halfEdge->source()->point();
+  } else {
+    srcPt = midPt - infDist*dir;
+  }
+
+  Point_2 tgtPt;
+  if(hasTgt){
+    tgtPt = halfEdge->target()->point();
+  }else{
+    tgtPt = midPt + infDist*dir;
+  }
+
+  return std::make_pair(srcPt, tgtPt);
+}
+
+
 std::shared_ptr<LaguerreDiagram::Polygon_2> LaguerreDiagram::BoundOneCell(PowerDiagram::Face_handle const& face)
 {
       // Get the point in the Regular triangulation at the center of this Laguerre cell
@@ -429,85 +470,59 @@ std::shared_ptr<LaguerreDiagram::Polygon_2> LaguerreDiagram::BoundOneCell(PowerD
 
       // Loop over all of the edges in the face
       do {
-        // std::cout << "\nLaguerre edge: ";
-        // if(!halfEdge->has_source()){
-        //   std::cout << "(infty) -> ";
-        // }else{
-        //   std::cout << "(" << CGAL::to_double(halfEdge->source()->point().x()) << "," << CGAL::to_double(halfEdge->source()->point().y()) << ") -> ";
-        // }
-        // if(!halfEdge->has_target()){
-        //   std::cout << "(infty)" << std::endl;
-        // }else{
-        //   std::cout << "(" << CGAL::to_double(halfEdge->target()->point().x()) << "," << CGAL::to_double(halfEdge->target()->point().y()) << ")" << std::endl;
-        // }
-        // std::cout << "HasInternalSource = "<< HasInternalSource(halfEdge) << std::endl;
-        // std::cout << "HasInternalTarget = "<< HasInternalTarget(halfEdge) << std::endl;
 
-        // Get the node in the triangulation on the other side of this edge
-        auto vt = halfEdge->twin()->face()->dual()->point();
+        bool hasSrc = halfEdge->has_source();
+        bool hasTgt = halfEdge->has_target();
 
-        // Compute the direction of dividing line between this cell and the other cell
-        Vector_2 dir(vs.y()-vt.y(), -(vs.x()-vt.x()));
-        dir /= std::sqrt(CGAL::to_double(dir.squared_length()));
+        Point_2 srcPt, tgtPt;
+        std::tie(srcPt, tgtPt) = GetEdgeVerts(halfEdge);
 
-        // If the edge doesn't have a source or a target...
-        if( (!halfEdge->has_source()) && (!halfEdge->has_target()) ){
+        bool srcInside = bbox.IsInside(srcPt);
+        bool tgtInside = bbox.IsInside(tgtPt);
 
-          // Find the weighted mid point between the triangulation sites
-          double ts = CGAL::to_double( CGAL::squared_distance(vt.point(), vs.point()).exact() );
-          double h = (0.5/ts)*CGAL::to_double(ts + vs.weight() - vt.weight());
-          Point_2 midPt = vs.point() + h*(vt.point()-vs.point());
-
-          Point_2 tgtPt = midPt + infDist*dir;
-          Point_2 srcPt = midPt - infDist*dir;
-          bbox.ClipSegment(srcPt,tgtPt);
-
-          polyPts.push_back(tgtPt);
-          bbox.AddCorners(srcPt, polyPts);
+        if(srcInside){
           polyPts.push_back(srcPt);
 
-        }else{
+          // If the src is inside but the target is not, then we need to figure out where the edges cross
+          if(!tgtInside){
 
-          // If there is a source node, add it!
-          bool hasInSrc = HasInternalSource(halfEdge);
-          if(hasInSrc){
-            polyPts.push_back(halfEdge->source()->point());
+            bbox.ClipSegment(srcPt,tgtPt);
+
+            polyPts.push_back(tgtPt);
+
+            // Figure out the next edge that intersects the bounding box
+            auto nextEdge = halfEdge;
+            nextEdge++;
+            std::tie(srcPt, tgtPt) = GetEdgeVerts(nextEdge);
+            while(!bbox.ClipSegment(srcPt,tgtPt)){
+              nextEdge++;
+              std::tie(srcPt, tgtPt) = GetEdgeVerts(nextEdge);
+            }
+
+            // Add any necessary corners and the point where the polygon reenters
+            bbox.AddCorners(srcPt, polyPts);
+            polyPts.push_back(srcPt);
           }
 
-          if((!HasInternalTarget(halfEdge)) && hasInSrc){
-            /* If this halfedge doesn't have a target node, then the next half
-               edge won't have a source node and we need to add in all boundary
-               nodes (including corners) need to bound the Laguerre cell.
-            */
+        // source and target are outside
+        }else{
 
-            // Figure out where the current ray crosses the boundary
-            Point_2 curr_src = halfEdge->source()->point();
-            Point_2 curr_tgt = curr_src + infDist*dir;
-            bbox.ClipSegment(curr_src,curr_tgt);
-            polyPts.push_back(curr_tgt);
+          if(bbox.ClipSegment(srcPt,tgtPt)){
 
-            // Figure out where the next ray crosses the boundary
-            auto nextHalfEdge = halfEdge;
-            nextHalfEdge++;
-            while(!HasInternalTarget(nextHalfEdge)){
-              nextHalfEdge++;
+            polyPts.push_back(srcPt);
+            // If the target is not inside, we might also have to add some corners
+            if(!tgtInside){
+              polyPts.push_back(tgtPt);
+
+              auto nextEdge = halfEdge;
+              nextEdge++;
+              std::tie(srcPt, tgtPt) = GetEdgeVerts(nextEdge);
+              while(!bbox.ClipSegment(srcPt,tgtPt)){
+                nextEdge++;
+                std::tie(srcPt, tgtPt) = GetEdgeVerts(nextEdge);
+              }
+              bbox.AddCorners(srcPt, polyPts);
             }
-            assert(!HasInternalSource(nextHalfEdge));
-
-            auto next_vt = nextHalfEdge->twin()->face()->dual()->point();
-            Vector_2 next_dir(vs.y()-next_vt.y(), -(vs.x()-next_vt.x()));
-            next_dir /= std::sqrt(CGAL::to_double(next_dir.squared_length()));
-
-            Point_2 next_tgt = nextHalfEdge->target()->point();
-            Point_2 next_src = next_tgt - infDist*next_dir;
-            bbox.ClipSegment(next_src, next_tgt);
-
-            // Add corner points (if necessary), until we reach the next ray's source.
-            bbox.AddCorners(next_src, polyPts);
-
-            // Add the next edges source and target
-            polyPts.push_back(next_src);
-            polyPts.push_back(next_tgt);
           }
         }
 
@@ -516,6 +531,7 @@ std::shared_ptr<LaguerreDiagram::Polygon_2> LaguerreDiagram::BoundOneCell(PowerD
       auto outPoly = std::make_shared<Polygon_2>(polyPts.begin(), polyPts.end());//temp.begin()->outer_boundary());
       assert(outPoly);
 
+      std::cout << outPoly->size() << std::endl;
       if(outPoly->size()<3){
         std::stringstream msg;
         msg << "Could not construct Laguerre diagram. Found empty Laguerre cell.";
@@ -574,7 +590,27 @@ void LaguerreDiagram::CreateBoundedCells(Eigen::Matrix2Xd const& pts)
     throw LaguerreDiagram::ConstructionException(msg.str());
   }
 
+  std::cout << "All faces = " << std::endl;
   for(auto& face : faces){
+    std::cout << "Seed point = " << face->dual()->point() << std::endl;
+    std::cout << "Edges = " << std::endl;
+
+    auto ec_start = face->ccb();
+    auto ec = ec_start;
+    do {
+      if ( ec->has_source() )  std::cout << ec->source()->point();
+      else  std::cout << "inf";
+      std::cout << " -> ";
+      if ( ec->has_target() )  std::cout << ec->target()->point();
+      else  std::cout << "inf";
+      std::cout  << std::endl;
+
+    } while ( ++ec != ec_start );
+
+  }
+  for(auto& face : faces){
+    std::cout << "Current point = " << face->dual()->point() << std::endl;
+
     laguerreCells.push_back( BoundOneCell(face) );
     AddInternalEdges(face);
   }
