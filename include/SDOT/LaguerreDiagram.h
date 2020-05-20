@@ -19,6 +19,7 @@
 
 #include "SDOT/BoundingBox.h"
 #include "SDOT/Distribution2d.h"
+#include "SDOT/Polygon.h"
 
 namespace sdot{
 
@@ -111,7 +112,7 @@ public:
                                                unsigned int       numPts);
 
   /** Returns a CGAL Polygon_2 object representing one of the Laguerre cells. */
-  std::shared_ptr<Polygon_2> const& GetCell(int ind) const{return laguerreCells.at(ind);};
+  std::shared_ptr<Polygon> GetCell(int ind) const{return std::make_shared<Polygon>(laguerreCells.at(ind));};
 
   /**
   Returns the vertices of a single cell in the Laguerre diagram.

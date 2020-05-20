@@ -22,6 +22,12 @@ PYBIND11_MODULE(_pysdot, m) {
     .def_readonly("yMin", &BoundingBox::yMin)
     .def_readonly("yMax", &BoundingBox::yMax);
 
+  py::class_<Polygon, std::shared_ptr<Polygon>>(m,"Polygon")
+    .def(py::init<Eigen::Matrix2Xd const&>())
+    .def("GetVertices", &Polygon::GetVertices)
+    .def("ConvexPartition",&Polygon::ConvexPartition)
+    .def("IsConvex", &Polygon::IsConvex);
+    
   py::class_<RegularGrid, std::shared_ptr<RegularGrid>>(m,"RegularGrid")
     .def(py::init<double,double,double,double, unsigned int, unsigned int>())
     .def(py::init<BoundingBox const&, unsigned int, unsigned int>())

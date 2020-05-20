@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
 
   std::cout << "Laguerre cells = " << std::endl;
   for(int polyInd=0; polyInd<numPts; ++polyInd){
-    std::shared_ptr<PolygonRasterizeIter::Polygon_2> poly = lagDiag->GetCell(polyInd);
+    std::shared_ptr<PolygonRasterizeIter::Polygon_2> poly = lagDiag->GetCell(polyInd)->ToCGAL();
 
     auto vertIt = poly->vertices_begin();
     std::cout << "[[" << vertIt->x() << "," << vertIt->y() << "]";
@@ -99,60 +99,6 @@ int main(int argc, char* argv[])
     }
     std::cout << "]" << std::endl;
   }
-
-  exit(0);
-
-
-  double obj, fdObj;
-  Eigen::VectorXd grad, fdGrad, tempGrad;
-  Eigen::SparseMatrix<double> hess, tempHess;
-  Eigen::MatrixXd fdHess(numPts,numPts);
-
-  const double stepSize = 1.0;
-  for(int i=0; i<1; ++i){
-    std::cout << "\n\nIteration " << i << std::endl;
-    std::cout << "  Base Prices = " << prices.transpose() << std::endl;
-    std::tie(obj, grad, hess) = sdot->Objective(prices);
-    // std::cout << "  Objective = " << obj << std::endl;
-    // std::cout << "  Gradient = " << grad.transpose() << std::endl;
-    // // exit(0);
-
-    // double tempObj1, tempObj2;
-    // double fdstep = 1e-4;
-    // Eigen::VectorXd tempGrad1, tempGrad2, fdGrad(numPts);
-    // Eigen::SparseMatrix<double> tempHess;
-    // for(unsigned int d=0; d<numPts; ++d){
-    //   Eigen::VectorXd newPrices = prices;
-    //   newPrices(d) = prices(d) + 0.5*fdstep;
-    //   std::cout << "\n  FD Prices = " << newPrices.transpose() << std::endl;
-    //   std::tie(tempObj1, tempGrad1, tempHess) = sdot->Objective(newPrices);
-    //   std::cout << "\n  FD Prices = " << newPrices.transpose() << std::endl;
-    //   newPrices(d) = prices(d) - 0.5*fdstep;
-    //   std::tie(tempObj2, tempGrad2, tempHess) = sdot->Objective(newPrices);
-    //
-    //   fdGrad(d) = (tempObj1 - tempObj2)/fdstep;
-    //   fdHess.col(d) = (tempGrad1-tempGrad2)/fdstep;
-    // }
-    //
-    //
-    // std::cout << "\nAn Gradient = " << grad.transpose() << std::endl;
-    // std::cout << "FD Gradient = " << fdGrad.transpose() << std::endl;
-    //
-    // std::cout << "An Hessian = \n" << hess*Eigen::MatrixXd::Identity(numPts,numPts) << std::endl;
-    // std::cout << "Fd Hessian = \n" << fdHess << std::endl;
-    //
-    // Eigen::SimplicialLDLT< Eigen::SparseMatrix<double> > solver(-1.0*hess.block(1,1,numPts-1,numPts-1));
-    // //
-    // // //std::cout << "  Inverse Hessian = \n" << -1.0*solver.solve(Eigen::MatrixXd::Identity(numPts,numPts)) << std::endl;
-    // //
-    // Eigen::VectorXd step = -solver.solve(-1.0*grad.tail(numPts-1));
-    // std::cout << "  Newton Step = " << step.transpose() << std::endl;
-    //
-    //
-    // prices.tail(numPts-1) += stepSize*step;
-  }
-
-  //std::cout << "Objective = " << obj << std::endl;
 
   return 0;
 }

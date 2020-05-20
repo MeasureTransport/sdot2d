@@ -49,7 +49,7 @@ int main(int argc, char* argv[])
   for(int polyInd=0; polyInd<numPts; ++polyInd){
     std::cout << "\n\n==================================\n";
     std::cout << "Polygon " << polyInd << std::endl;
-    std::shared_ptr<PolygonRasterizeIter::Polygon_2> poly = diag.GetCell(polyInd);
+    std::shared_ptr<PolygonRasterizeIter::Polygon_2> poly = diag.GetCell(polyInd)->ToCGAL();
 
     auto vertIt = poly->vertices_begin();
     std::cout << "[[" << vertIt->x() << "," << vertIt->y() << "]";

@@ -19,6 +19,7 @@ set(LibrarySources
     src/RegularGrid.cpp
     src/DiscretizedDistribution.cpp
     src/SemiDiscreteOT.cpp
+    src/Polygon.cpp
 )
 
 # Set the source files for the python wrapper
@@ -45,11 +46,15 @@ endif()
 add_library(sdot SHARED ${LibrarySources})
 target_link_libraries(sdot ${ExternalLibraries})
 
+## Add test executables
 add_executable(ConstructLaguerre tests/ConstructLaguerre.cpp)
 target_link_libraries(ConstructLaguerre sdot ${OtherLibraries})
 
 add_executable(ComputeSDOT tests/ComputeSDOT.cpp)
 target_link_libraries(ComputeSDOT sdot ${OtherLibraries})
+
+add_executable(Convexify tests/Convexify.cpp)
+target_link_libraries(Convexify sdot ${OtherLibraries})
 
 
 # Add pybind11 wrapper

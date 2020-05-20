@@ -97,7 +97,7 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT::ComputeGradient(Eigen::VectorX
    gradient(cellInd) = discrProbs(cellInd);
 
    // Loop over the grid cells in this Laguerre cell
-   auto lagCell = lagDiag.GetCell(cellInd);
+   auto lagCell = lagDiag.GetCell(cellInd)->ToCGAL();
    PolygonRasterizeIter gridIter(grid,lagCell);
 
    unsigned int xInd, yInd;

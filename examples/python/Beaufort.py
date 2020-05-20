@@ -23,7 +23,7 @@ def ClipToIce(grayImg, lagDiag, xbnds, ybnds):
         poly = geom.shape(geo).buffer(0) # Convert the rasterio result to a shapely shape
         polys.append(poly)
 
-    icePoly = unary_union(polys)#.simplify(1.0,preserve_topology=True)
+    icePoly = unary_union(polys).simplify(1.0,preserve_topology=True)
 
     Nx = float(grayImg.shape[1])
     Ny = float(grayImg.shape[0])
@@ -40,14 +40,22 @@ def ClipToIce(grayImg, lagDiag, xbnds, ybnds):
         elif(type(inter)==geom.multipolygon.MultiPolygon):
             clippedPolys += list(inter)
 
-    return clippedPolys, icePoly
+    # for each of the clipped polygons, make them convex
+    convexPolys = []
+    for poly in clippedPolys:
+        pts = np.array(poly.exterior.coords.xy)
+        otPoly = ot.Polygon(pts)
+        parts = otPoly.ConvexPartition()
+        convexPolys += [geom.Polygon(p.GetVertices().T) for p in ot.Polygon(pts).ConvexPartition()]
+
+    return convexPolys, icePoly
 
 
 thinBy = 1
 img = io.imread('BeaufortLandfast_MODIS_04_04_2020.jpg')
 img = img[600:900:thinBy, 1100:1400:thinBy]
 
-threshold = 0.7
+threshold = 0.8
 fig, axs = plt.subplots(ncols=2)
 axs[0].imshow(img,cmap='Greys_r')
 
@@ -88,9 +96,9 @@ axs[1].set_ylim(ybnds[1],ybnds[0])
 
 print('Number of clipped polynomials = ', len(clippedPolys))
 patches = [PolygonPatch(p) for p in clippedPolys]
-
-axs[2].add_collection(PatchCollection(patches,facecolor='gray',edgecolor='k',alpha=0.4))
-axs[2].set_ylim(threshImg.shape[0],0)
-axs[2].set_xlim(0,threshImg.shape[1])
+fig, ax = plt.subplots()
+ax.add_collection(PatchCollection(patches,facecolor='gray',edgecolor='k',alpha=0.4))
+ax.set_ylim(threshImg.shape[0],0)
+ax.set_xlim(0,threshImg.shape[1])
 
 plt.show()

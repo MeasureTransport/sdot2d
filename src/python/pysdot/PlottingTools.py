@@ -1,10 +1,32 @@
 import _pysdot as ot
 import numpy as np
 
-from matplotlib.patches import Circle, Wedge, Polygon, Patch
+import matplotlib.patches as mpatch
 from matplotlib.lines import Line2D
 from matplotlib.collections import PatchCollection
 import matplotlib.pyplot as plt
+
+
+def PlotPolygonCollection(listOfPolys, ax, **kwargs):
+    """ Plots a collection of polygons.
+    """
+
+    patches = []
+    for cellInd in range(len(listOfPolys)):
+        verts = listOfPolys[cellInd].GetVertices()
+        patches.append( mpatch.Polygon(verts.T) )
+
+    #colors = list(range(lagDiag.NumCells()))
+    p = PatchCollection(patches, facecolor='gray', edgecolor='k', alpha=0.6)
+
+    if('cell_colors' in kwargs):
+        cell_colors = np.array(kwargs['cell_colors'])
+        assert(cell_colors.shape[0]==lagDiag.NumCells());
+        p.set_array(cell_colors)
+    ax.add_collection(p)
+
+    ax.set_xlabel('$x_1$')
+    ax.set_ylabel('$x_2$')
 
 
 def PlotDiagram(lagDiag, ax, **kwargs):
@@ -14,7 +36,7 @@ def PlotDiagram(lagDiag, ax, **kwargs):
     patches = []
     for cellInd in range(lagDiag.NumCells()):
         verts = lagDiag.GetCellVertices(cellInd)
-        patches.append( Polygon(verts.T) )
+        patches.append( mpatch.Polygon(verts.T) )
 
     #colors = list(range(lagDiag.NumCells()))
     p = PatchCollection(patches, facecolor='gray', edgecolor='k', alpha=0.6)
@@ -45,7 +67,7 @@ def PlotDiagram(lagDiag, ax, **kwargs):
     ax.plot(seeds[0,:], seeds[1,:],'.k')
 
 
-    legend_elements = [Patch(facecolor='gray',edgecolor='k', alpha=0.4, label='Laguerre Cells'),
+    legend_elements = [mpatch.Patch(facecolor='gray',edgecolor='k', alpha=0.4, label='Laguerre Cells'),
                        Line2D([0], [0], marker='o', color='w', markerfacecolor='b', markersize=10, label='Centroids'),
                        Line2D([0], [0], marker='o', color='w', markerfacecolor='k', markersize=10, label='Seeds')]
 
