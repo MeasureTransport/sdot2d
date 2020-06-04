@@ -27,7 +27,7 @@ PYBIND11_MODULE(_pysdot, m) {
     .def("GetVertices", &Polygon::GetVertices)
     .def("ConvexPartition",&Polygon::ConvexPartition)
     .def("IsConvex", &Polygon::IsConvex);
-    
+
   py::class_<RegularGrid, std::shared_ptr<RegularGrid>>(m,"RegularGrid")
     .def(py::init<double,double,double,double, unsigned int, unsigned int>())
     .def(py::init<BoundingBox const&, unsigned int, unsigned int>())
@@ -83,5 +83,6 @@ PYBIND11_MODULE(_pysdot, m) {
     .def("PointGradient", (Eigen::Matrix2Xd (SemidiscreteOT::*)() const) &SemidiscreteOT::PointGradient)
     .def("SetPoints", &SemidiscreteOT::SetPoints)
     .def_static("BuildCentroidal", (std::shared_ptr<LaguerreDiagram> (*)(std::shared_ptr<Distribution2d> const&, Eigen::Matrix2Xd const&, Eigen::VectorXd const&, unsigned int, double)) &SemidiscreteOT::BuildCentroidal, py::arg("dist"), py::arg("initialPoints"), py::arg("probs"),py::arg("maxIts")=100,py::arg("tol")=1e-3)
+    .def_static("BuildCentroidal", (std::shared_ptr<LaguerreDiagram> (*)(std::shared_ptr<Distribution2d> const&, Eigen::VectorXd const&, unsigned int, double)) &SemidiscreteOT::BuildCentroidal, py::arg("dist"), py::arg("probs"),py::arg("maxIts")=100,py::arg("tol")=1e-3)
     .def_static("BuildCentroidal", (std::shared_ptr<LaguerreDiagram> (*)(std::shared_ptr<Distribution2d> const&, unsigned int, unsigned int, double)) &SemidiscreteOT::BuildCentroidal, py::arg("dist"),py::arg("numPts"), py::arg("maxIts")=100,py::arg("tol")=1e-3);
 }

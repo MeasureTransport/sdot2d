@@ -80,6 +80,10 @@ namespace sdot{
                                                             unsigned int                           maxIts=200,
                                                             double                                 tol=1e-3);
 
+    static std::shared_ptr<LaguerreDiagram> BuildCentroidal(std::shared_ptr<Distribution2d> const& distIn,
+                                                            Eigen::VectorXd                 const& pointProbs,
+                                                            unsigned int                           maxIts=200,
+                                                            double                                 tol=1e-3);
 
     static std::shared_ptr<LaguerreDiagram> BuildCentroidal(std::shared_ptr<Distribution2d> const& distIn,
                                                             unsigned int                           numPts,

@@ -682,14 +682,21 @@ std::shared_ptr<LaguerreDiagram> SemidiscreteOT::BuildCentroidal(std::shared_ptr
   return ot->Diagram();
 }
 
+std::shared_ptr<LaguerreDiagram> SemidiscreteOT::BuildCentroidal(std::shared_ptr<Distribution2d> const& dist,
+                                                                 Eigen::VectorXd                 const& probs,
+                                                                 unsigned int                           maxIts,
+                                                                 double                                 tol)
+{
+  BoundingBox bbox(dist->Grid()->xMin, dist->Grid()->xMax, dist->Grid()->yMin, dist->Grid()->yMax);
+  Eigen::Matrix2Xd initialPts = LaguerreDiagram::LatinHypercubeSample(bbox, probs.size());
+  return BuildCentroidal(dist, initialPts, probs, maxIts, tol);
+}
 
 std::shared_ptr<LaguerreDiagram> SemidiscreteOT::BuildCentroidal(std::shared_ptr<Distribution2d> const& dist,
                                                                  unsigned int                           numPts,
                                                                  unsigned int                           maxIts,
                                                                  double                                 tol)
 {
-  BoundingBox bbox(dist->Grid()->xMin, dist->Grid()->xMax, dist->Grid()->yMin, dist->Grid()->yMax);
-  Eigen::Matrix2Xd initialPts = LaguerreDiagram::LatinHypercubeSample(bbox, numPts);
   Eigen::VectorXd probs = (1.0/numPts)*Eigen::VectorXd::Ones(numPts);
-  return BuildCentroidal(dist, initialPts, probs, maxIts, tol);
+  return BuildCentroidal(dist, probs, maxIts, tol);
 }
