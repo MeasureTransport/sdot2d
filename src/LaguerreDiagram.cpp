@@ -389,7 +389,6 @@ void LaguerreDiagram::CreateUnboundedDiagram(Eigen::Matrix2Xd const& pts,
     assert(costs(i)>=0);
     unboundedDiagram.insert( Site_2(Point_2(pts(0,i), pts(1,i)), std::sqrt(costs(i))) )->dual()->info()= i;
   }
-    //wpoints.at(i) = ;
 
   assert(unboundedDiagram.is_valid());
 }
@@ -531,7 +530,6 @@ std::shared_ptr<LaguerreDiagram::Polygon_2> LaguerreDiagram::BoundOneCell(PowerD
       auto outPoly = std::make_shared<Polygon_2>(polyPts.begin(), polyPts.end());//temp.begin()->outer_boundary());
       assert(outPoly);
 
-      std::cout << outPoly->size() << std::endl;
       if(outPoly->size()<3){
         std::stringstream msg;
         msg << "Could not construct Laguerre diagram. Found empty Laguerre cell.";
@@ -590,26 +588,23 @@ void LaguerreDiagram::CreateBoundedCells(Eigen::Matrix2Xd const& pts)
     throw LaguerreDiagram::ConstructionException(msg.str());
   }
 
-  std::cout << "All faces = " << std::endl;
+  // for(auto& face : faces){
+  //
+  //   auto ec_start = face->ccb();
+  //   auto ec = ec_start;
+  //   do {
+  //     if ( ec->has_source() )  std::cout << ec->source()->point();
+  //     else  std::cout << "inf";
+  //     std::cout << " -> ";
+  //     if ( ec->has_target() )  std::cout << ec->target()->point();
+  //     else  std::cout << "inf";
+  //     std::cout  << std::endl;
+  //
+  //   } while ( ++ec != ec_start );
+  //
+  // }
   for(auto& face : faces){
-    std::cout << "Seed point = " << face->dual()->point() << std::endl;
-    std::cout << "Edges = " << std::endl;
-
-    auto ec_start = face->ccb();
-    auto ec = ec_start;
-    do {
-      if ( ec->has_source() )  std::cout << ec->source()->point();
-      else  std::cout << "inf";
-      std::cout << " -> ";
-      if ( ec->has_target() )  std::cout << ec->target()->point();
-      else  std::cout << "inf";
-      std::cout  << std::endl;
-
-    } while ( ++ec != ec_start );
-
-  }
-  for(auto& face : faces){
-    std::cout << "Current point = " << face->dual()->point() << std::endl;
+    // std::cout << "Current point = " << face->dual()->point() << std::endl;
 
     laguerreCells.push_back( BoundOneCell(face) );
     AddInternalEdges(face);

@@ -479,7 +479,12 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd const& 
 
     step.tail(dim-1) = SolveSubProblem(fval, grad.tail(dim-1),  hess.block(1,1,dim-1,dim-1), trustRadius);
 
+    // Crude method (kind of like a line search) for ensuring the prices are positive
     newX = x+step;
+    while(newX.minCoeff()<1e-13){
+      step *= 0.5;
+      newX = x+step;
+    }
 
     // Try constructing the new Laguerre diagram.  If we can't then shrink the trust region size
     try{
