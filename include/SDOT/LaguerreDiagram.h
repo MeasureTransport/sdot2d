@@ -20,6 +20,7 @@
 #include "SDOT/BoundingBox.h"
 #include "SDOT/Distribution2d.h"
 #include "SDOT/Polygon.h"
+#include "SDOT/Integrands/Integrand.h"
 
 namespace sdot{
 
@@ -151,11 +152,22 @@ public:
   */
   Eigen::Vector2d CellCentroid(unsigned int cellInd, std::shared_ptr<Distribution2d> const& dist) const;
 
-  /** Returns the area of one of the Laguerre cells. */
-  double CellArea(unsigned int cellInd) const;
+  /** Returns the area of one of the Laguerre cells, possibly weighted by the
+      the two-dimensional distribution.
+  */
+  double CellArea(unsigned int cellInd,
+                  std::shared_ptr<Distribution2d> const& dist=nullptr) const;
 
-  /** Returns the weighted cell area (i.e., probability) of one Laguerre cell. */
-  double CellArea(unsigned int cellInd, std::shared_ptr<Distribution2d> const& dist) const;
+  /** Integrates a function f(x) defined on the Laguerre cell.   If the dist
+      input is defined, then this functions computed the weighted integral
+      $\int_A f(x)w(x) dx$ for the distribution $w(x)$.
+  */
+  double IntegrateOverCell(unsigned int                     cellInd,
+                           std::shared_ptr<Integrand> const& integrand,
+                           std::shared_ptr<Distribution2d> const& dist) const;
+
+  double IntegrateOverCell(unsigned int                     cellInd,
+                           std::shared_ptr<Integrand> const& integrand) const;
 
   /** Repeatedly calls CellCentroid to compute the centers of mass for all
       Laguerre cells.  Column $i$ of the output matrix contains the centroid of

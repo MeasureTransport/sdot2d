@@ -1,5 +1,8 @@
 #include "SDOT/SemidiscreteOT.h"
 
+#include "SDOT/Integrands/ConstantIntegrand.h"
+#include "SDOT/Integrands/TransportIntegrand.h"
+
 #include <CGAL/Kernel/global_functions.h>
 
 #include <algorithm>
@@ -85,103 +88,148 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT::ComputeGradient(Eigen::VectorX
  Eigen::VectorXd objParts(numCells);
  Eigen::VectorXd gradient(numCells);
 
- double weightedArea = 0.0;
+ double totalProb = 0.0;
+
  //Eigen::MatrixXd cellAreas = Eigen::MatrixXd::Zero(grid->Nx, grid->Ny);
+ auto area_integrand = std::make_shared<ConstantIntegrand>();
 
  for(int cellInd=0; cellInd<numCells; ++cellInd){
 
-   // std::cout << "Laguerre cell " << cellInd << std::endl;
-   double lagCellArea = 0.0;
+   auto trans_integrand = std::make_shared<TransportIntegrand>(discrPts.col(cellInd));
 
-   objParts(cellInd) = prices(cellInd)*discrProbs(cellInd);
-   gradient(cellInd) = discrProbs(cellInd);
+   double weightedArea  = lagDiag.IntegrateOverCell(cellInd, area_integrand, dist);
 
-   // Loop over the grid cells in this Laguerre cell
-   auto lagCell = lagDiag.GetCell(cellInd)->ToCGAL();
-   PolygonRasterizeIter gridIter(grid,lagCell);
+   objParts(cellInd) = prices(cellInd)*discrProbs(cellInd)
+                     + lagDiag.IntegrateOverCell(cellInd, trans_integrand, dist)
+                     - prices(cellInd)*weightedArea;
 
-   unsigned int xInd, yInd;
-   double x1, x2, x3, y1, y2, y3, gridCellDens;
+   gradient(cellInd) = discrProbs(cellInd) - weightedArea;
 
-   while(gridIter.IsValid()){
+   // std::cout << "Cell " << cellInd << " has vertices:\n";
+   // Eigen::Matrix2Xd verts = lagDiag.GetCellVertices(cellInd);
+   // for(int col=0; col<verts.cols();++col)
+   //   std::cout <<"[" << verts(0,col) << "," << verts(1,col) << "], ";
+   // std::cout << std::endl;
+   //
+   // std::cout << "  and probability " << weightedArea << std::endl;
+   // //
+   // // Loop over the grid cells in this Laguerre cell
+   // auto lagCell = lagDiag.GetCell(cellInd)->ToCGAL();
+   // PolygonRasterizeIter gridIter(grid,lagCell);
+   //
+   // unsigned int xInd, yInd;
+   // double x1, x2, x3, y1, y2, y3, gridCellDens;
+   //
+   // double unweightedArea = 0.0;
+   //
+   // while(gridIter.IsValid()){
+   //
+   //   xInd = gridIter.Indices().first;
+   //   yInd = gridIter.Indices().second;
+   //
+   //   // The probability in this grid cell
+   //   gridCellDens = dist->Density(xInd,yInd);
+   //
+   //   double interArea = 0.0;
+   //
+   //   //double interObj = 0.0;
+   //
+   //
+   //   if(gridIter.IsBoundary()){
+   //
+   //     // Break the intersection polygon into triangles and add contributions from each triangle
+   //     std::shared_ptr<PolygonRasterizeIter::Polygon_2> overlapPoly = gridIter.OverlapPoly();
+   //     assert(overlapPoly);
+   //     assert(overlapPoly->size()>2); // <- Makes sure there is at least 3 nodes in the polygon
+   //
+   //     auto beginVert = overlapPoly->vertices_begin();
+   //     auto vert1 = beginVert;
+   //     vert1++;
+   //     auto vert2 = vert1;
+   //     vert2++;
+   //
+   //     x1 = CGAL::to_double( beginVert->x() );
+   //     y1 = CGAL::to_double( beginVert->y() );
+   //
+   //     //interArea = gridCellDens*CGAL::to_double( overlapPoly->area() );
+   //     std::cout << "Overlap poly = \n";
+   //     std::cout << x1 << ", " << y1 << std::endl;
+   //     std::cout << CGAL::to_double( vert1->x() ) << ", " << CGAL::to_double( vert1->y() ) << std::endl;
+   //
+   //     for(; vert2!=overlapPoly->vertices_end(); vert2++, vert1++)
+   //     {
+   //       x2 = CGAL::to_double( vert1->x() );
+   //       y2 = CGAL::to_double( vert1->y() );
+   //       x3 = CGAL::to_double( vert2->x() );
+   //       y3 = CGAL::to_double( vert2->y() );
+   //
+   //       std::cout << x3 << ", " << y3 << std::endl;
+   //
+   //       if((std::abs(x3-x2)<1e-8)&&(std::abs(y3-y2)<1e-8)){
+   //         std::cerr << "Duplicate points!" << std::endl;
+   //         //throw std::runtime_error("Duplicate points.");
+   //
+   //       }else{
+   //         double triArea = 0.5*std::abs((x2*y1-x1*y2)+(x3*y2-x2*y3)+(x1*y3-x3*y1));
+   //
+   //         // std::cout << "     Triangle (" << x1 << "," << y1 << ")->(" << x2 << "," << y2 << ")->(" << x3 << "," << y3 << ")" << std::endl;
+   //         objParts(cellInd) += gridCellDens * (TriangleIntegral(x1,                  y1,
+   //                                                              x2,                  y2,
+   //                                                              x3,                  y3,
+   //                                                              discrPts(0,cellInd), discrPts(1,cellInd))
+   //                                              - triArea*prices(cellInd));
+   //
+   //         phiu += gridCellDens*triArea*prices(cellInd);
+   //
+   //         //                                                      x2,                  y2,
+   //         //                                                      x3,                  y3,
+   //         //                                                      discrPts(0,cellInd), discrPts(1,cellInd))
+   //         //                                      - triArea*prices(cellInd)) << std::endl;
+   //         // // gridCellDense * triArea, where triArea=0.5*std::abs((x2*y1-x1*y2)+(x3*y2-x2*y3)+(x1*y3-x3*y1))
+   //
+   //         interArea += gridCellDens*triArea;
+   //         unweightedArea += triArea;
+   //
+   //         gradient(cellInd) -= gridCellDens*triArea;
+   //       }
+   //     }
+   //
+   //   }else{
+   //     interArea += gridCellDens*grid->dx*grid->dy;
+   //     unweightedArea += grid->dx*grid->dy;
+   //
+   //     objParts(cellInd) += gridCellDens*(SquareIntegral(gridIter.Cell()->xMin,  gridIter.Cell()->xMax,
+   //                                                       gridIter.Cell()->yMin,  gridIter.Cell()->yMax,
+   //                                                       discrPts(0,cellInd), discrPts(1,cellInd))
+   //                          - prices(cellInd)*grid->dx*grid->dy);
+   //
+   //     phiu += gridCellDens*grid->dx*grid->dy*prices(cellInd);
+   //     // gridCellDens * rectArea, where rectArea = grid->dx*grid->dy
+   //     gradient(cellInd) -= gridCellDens*grid->dx*grid->dy;
+   //   }
+   //
+   //   lagCellArea += interArea;
+   //
+   //   gridIter.Increment();
+   // }
 
-     xInd = gridIter.Indices().first;
-     yInd = gridIter.Indices().second;
-
-     // The probability in this grid cell
-     gridCellDens = dist->Density(xInd,yInd);
-
-     double interArea = 0.0;
-     //double interObj = 0.0;
-
-     if(gridIter.IsBoundary()){
-
-       // Break the intersection polygon into triangles and add contributions from each triangle
-       std::shared_ptr<PolygonRasterizeIter::Polygon_2> overlapPoly = gridIter.OverlapPoly();
-       assert(overlapPoly);
-       assert(overlapPoly->size()>2); // <- Makes sure there is at least 3 nodes in the polygon
-
-       auto beginVert = overlapPoly->vertices_begin();
-       auto vert1 = beginVert;
-       vert1++;
-       auto vert2 = vert1;
-       vert2++;
-
-       x1 = CGAL::to_double( beginVert->x() );
-       y1 = CGAL::to_double( beginVert->y() );
-
-       //interArea = gridCellDens*CGAL::to_double( overlapPoly->area() );
-
-       for(; vert2!=overlapPoly->vertices_end(); vert2++, vert1++)
-       {
-         x2 = CGAL::to_double( vert1->x() );
-         y2 = CGAL::to_double( vert1->y() );
-         x3 = CGAL::to_double( vert2->x() );
-         y3 = CGAL::to_double( vert2->y() );
-
-         double triArea = 0.5*std::abs((x2*y1-x1*y2)+(x3*y2-x2*y3)+(x1*y3-x3*y1));
-
-         // std::cout << "     Triangle (" << x1 << "," << y1 << ")->(" << x2 << "," << y2 << ")->(" << x3 << "," << y3 << ")" << std::endl;
-         objParts(cellInd) += gridCellDens * (TriangleIntegral(x1,                  y1,
-                                                              x2,                  y2,
-                                                              x3,                  y3,
-                                                              discrPts(0,cellInd), discrPts(1,cellInd))
-                                              - triArea*prices(cellInd));
-
-         // std::cout << "      Objective part = " << gridCellDens * (TriangleIntegral(x1,                  y1,
-         //                                                      x2,                  y2,
-         //                                                      x3,                  y3,
-         //                                                      discrPts(0,cellInd), discrPts(1,cellInd))
-         //                                      - triArea*prices(cellInd)) << std::endl;
-         // // gridCellDense * triArea, where triArea=0.5*std::abs((x2*y1-x1*y2)+(x3*y2-x2*y3)+(x1*y3-x3*y1))
-
-         interArea += gridCellDens*triArea;
-         gradient(cellInd) -= gridCellDens*triArea;
-       }
-
-     }else{
-       interArea += gridCellDens*grid->dx*grid->dy;
-
-       objParts(cellInd) += gridCellDens*(SquareIntegral(gridIter.Cell()->xMin,  gridIter.Cell()->xMax,
-                                                         gridIter.Cell()->yMin,  gridIter.Cell()->yMax,
-                                                         discrPts(0,cellInd), discrPts(1,cellInd))
-                            - prices(cellInd)*grid->dx*grid->dy);
-
-       // gridCellDens * rectArea, where rectArea = grid->dx*grid->dy
-       gradient(cellInd) -= gridCellDens*grid->dx*grid->dy;
-     }
-
-     lagCellArea += interArea;
-
-     gridIter.Increment();
-   }
-
-   //std::cout << "   Cell " << cellInd <<  " has weighted area = " << lagCellArea << std::endl;
-   weightedArea += lagCellArea;
+   totalProb += weightedArea;
  }
 
- if(std::abs(weightedArea-1.0)>1e-10){
-   std::cout << "Warning:  Total probability has an error of " << weightedArea-1.0 << std::endl;
+ if(std::abs(totalProb-1.0)>1e-10){
+
+   std::cout << "Warning:  Total probability has an error of " << totalProb-1.0 << std::endl;
+   // std::cout << "Prices = " << prices.transpose() << std::endl;
+   // for(unsigned int cellInd=0; cellInd<lagDiag.NumCells(); ++cellInd){
+   //   std::cout << "Cell " << cellInd << " has points " << std::endl;
+   //   Eigen::MatrixXd pts = lagDiag.GetCellVertices(cellInd);
+   //   for(unsigned int ptInd=0; ptInd<pts.cols(); ++ptInd){
+   //      std::cout << "[" << pts(0,ptInd) << "," << pts(1,ptInd) << "], ";
+   //   }
+   //   std::cout << std::endl;
+   // }
+   throw std::runtime_error("Error in total probability.");
+
    //assert(std::abs(weightedArea-1.0)<1e-10);
  }
 
@@ -393,26 +441,26 @@ Eigen::SparseMatrix<double> SemidiscreteOT::ComputeHessian(LaguerreDiagram const
   return hess;
 }
 
-double SemidiscreteOT::SquareIntegral(double xmin, double xmax,
-                                      double ymin, double ymax,
-                                      double px,   double py)
-{
- double rectInt = (0.5/3.0)*(ymax-ymin)*(std::pow(xmax-px,3.0)-std::pow(xmin-px,3.0))
-                + (0.5/3.0)*(xmax-xmin)*(std::pow(ymax-py,3.0)-std::pow(ymin-py,3.0));
+// double SemidiscreteOT::SquareIntegral(double xmin, double xmax,
+//                                       double ymin, double ymax,
+//                                       double px,   double py)
+// {
+//  double rectInt = (0.5/3.0)*(ymax-ymin)*(std::pow(xmax-px,3.0)-std::pow(xmin-px,3.0))
+//                 + (0.5/3.0)*(xmax-xmin)*(std::pow(ymax-py,3.0)-std::pow(ymin-py,3.0));
+//
+//  return rectInt;
+// }
 
- return rectInt;
-}
-
-double SemidiscreteOT::TriangleIntegral(double x1, double y1,
-                                       double x2, double y2,
-                                       double x3, double y3,
-                                       double px, double py)
-{
- double triInt = (1.0/2.0)*std::pow(px, 2) - 1.0/3.0*px*x1 - 1.0/3.0*px*x2 - 1.0/3.0*px*x3 + (1.0/2.0)*std::pow(py, 2) - 1.0/3.0*py*y1 - 1.0/3.0*py*y2 - 1.0/3.0*py*y3 + (1.0/12.0)*std::pow(x1, 2) + (1.0/12.0)*x1*x2 + (1.0/12.0)*x1*x3 + (1.0/12.0)*std::pow(x2, 2) + (1.0/12.0)*x2*x3 + (1.0/12.0)*std::pow(x3, 2) + (1.0/12.0)*std::pow(y1, 2) + (1.0/12.0)*y1*y2 + (1.0/12.0)*y1*y3 + (1.0/12.0)*std::pow(y2, 2) + (1.0/12.0)*y2*y3 + (1.0/12.0)*std::pow(y3, 2);
- triInt *= 0.5*((x2-x1)*(y3-y1) - (x3-x1)*(y2-y1));
-
- return triInt;
-}
+// double SemidiscreteOT::TriangleIntegral(double x1, double y1,
+//                                        double x2, double y2,
+//                                        double x3, double y3,
+//                                        double px, double py)
+// {
+//  double triInt = (1.0/2.0)*std::pow(px, 2) - 1.0/3.0*px*x1 - 1.0/3.0*px*x2 - 1.0/3.0*px*x3 + (1.0/2.0)*std::pow(py, 2) - 1.0/3.0*py*y1 - 1.0/3.0*py*y2 - 1.0/3.0*py*y3 + (1.0/12.0)*std::pow(x1, 2) + (1.0/12.0)*x1*x2 + (1.0/12.0)*x1*x3 + (1.0/12.0)*std::pow(x2, 2) + (1.0/12.0)*x2*x3 + (1.0/12.0)*std::pow(x3, 2) + (1.0/12.0)*std::pow(y1, 2) + (1.0/12.0)*y1*y2 + (1.0/12.0)*y1*y3 + (1.0/12.0)*std::pow(y2, 2) + (1.0/12.0)*y2*y3 + (1.0/12.0)*std::pow(y3, 2);
+//  triInt *= 0.5*((x2-x1)*(y3-y1) - (x3-x1)*(y2-y1));
+//
+//  return triInt;
+// }
 
 
 std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd const& prices0, unsigned int printLevel)
@@ -423,7 +471,7 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd const& 
   // Trust region approach with a double dogleg step
   double trustRadius = 1.0;
   const unsigned int maxEvals = 100;
-  const double xtol_abs = 1e-6*std::sqrt(double(dim));
+  const double xtol_abs = 1e-13*std::sqrt(double(dim));
   const double gtol_abs = 2e-4*std::sqrt(double(dim));
   const double ftol_abs = 1e-11;
   const double acceptRatio = 1e-4;//0.1;

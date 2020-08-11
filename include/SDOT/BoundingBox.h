@@ -49,6 +49,8 @@ namespace sdot {
 
     bool IsInside(Point_2 const& pt) const;
 
+    bool OnEdge(Point_2 const& pt) const;
+
     const double xMax, xMin, yMin, yMax;
 
   private:

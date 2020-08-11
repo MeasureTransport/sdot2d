@@ -26,11 +26,13 @@ Polygon::Polygon(Eigen::Matrix2Xd const& pts)
 
 Polygon::Polygon(std::shared_ptr<Polygon_2> const& cgalPolyIn) : cgalPoly(cgalPolyIn)
 {
-  if(cgalPoly->orientation()==CGAL::CLOCKWISE){
-    cgalPoly->reverse_orientation();
+  if(cgalPoly->size()>0){
+    if(cgalPoly->orientation()==CGAL::CLOCKWISE){
+      cgalPoly->reverse_orientation();
+    }
+    assert(cgalPoly->orientation()==CGAL::COUNTERCLOCKWISE);
+    assert(cgalPoly->is_simple());
   }
-  assert(cgalPoly->orientation()==CGAL::COUNTERCLOCKWISE);
-  assert(cgalPoly->is_simple());
 }
 
 

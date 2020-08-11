@@ -20,6 +20,8 @@ set(LibrarySources
     src/DiscretizedDistribution.cpp
     src/SemiDiscreteOT.cpp
     src/Polygon.cpp
+    src/Integrands/ConstantIntegrand.cpp
+    src/Integrands/TransportIntegrand.cpp
 )
 
 # Set the source files for the python wrapper
@@ -55,6 +57,9 @@ target_link_libraries(ComputeSDOT sdot ${OtherLibraries})
 
 add_executable(Convexify tests/Convexify.cpp)
 target_link_libraries(Convexify sdot ${OtherLibraries})
+
+add_executable(CircleProblem tests/CircleProblem.cpp)
+target_link_libraries(CircleProblem sdot ${OtherLibraries})
 
 
 # Add pybind11 wrapper

@@ -47,7 +47,6 @@ bool BoundingBox::ClipSegment(Point_2 &srcPt, Point_2 &tgtPt) const
   // Otherwise it has a non zero finite slope
   }else{
 
-
     // Parameterize the line as srcPt + t*(tgtPt-srcPt) with t in [0,1]
     Eigen::Matrix<double,4,1> qs(4), ps(4);
 
@@ -86,24 +85,26 @@ bool BoundingBox::ClipSegment(Point_2 &srcPt, Point_2 &tgtPt) const
 
 std::shared_ptr<BoundingBox::Polygon_2> BoundingBox::ClipPolygon(std::shared_ptr<BoundingBox::Polygon_2> const& poly) const
 {
-  // Polygon_2 boxPoly;
-  // boxPoly.push_back(Point_2(xMin,yMin));
-  // boxPoly.push_back(Point_2(xMax,yMin));
-  // boxPoly.push_back(Point_2(xMax,yMax));
-  // boxPoly.push_back(Point_2(xMin,yMax));
-  //
-  // std::list<Polygon_with_holes_2> temp;
-  // CGAL::intersection(*poly, boxPoly, std::back_inserter(temp));
-  // if(temp.size()==0){
-  //   return nullptr;
-  // }
-  // // There should only be one polygon intersection because everything is simple and convex
-  // assert(std::distance(temp.begin(),temp.end())==1);
-  //
-  // auto outPoly = std::make_shared<Polygon_2>(temp.begin()->outer_boundary());
-  //
-  // return outPoly;
 
+  Polygon_2 boxPoly;
+  boxPoly.push_back(Point_2(xMin,yMin));
+  boxPoly.push_back(Point_2(xMax,yMin));
+  boxPoly.push_back(Point_2(xMax,yMax));
+  boxPoly.push_back(Point_2(xMin,yMax));
+
+  std::list<Polygon_with_holes_2> temp;
+  CGAL::intersection(*poly, boxPoly, std::back_inserter(temp));
+  if(temp.size()==0){
+    return nullptr;
+  }
+  // // There should only be one polygon intersection because everything is simple and convex
+  assert(std::distance(temp.begin(),temp.end())==1);
+
+  auto outPoly = std::make_shared<Polygon_2>(temp.begin()->outer_boundary());
+
+  return outPoly;
+
+  ///////// TODO: FIX BUG BELOW HERE!
 
   std::vector<Point_2> newPts;
 
@@ -123,11 +124,13 @@ std::shared_ptr<BoundingBox::Polygon_2> BoundingBox::ClipPolygon(std::shared_ptr
       // If the src is inside but the target is not, then we need to figure out where the edges cross
       if(!tgtInside){
 
+
         Point_2 src = currEdge->source();
         Point_2 tgt = currEdge->target();
-        ClipSegment(src,tgt);
+        bool clipWorked = ClipSegment(src,tgt);
 
-        newPts.push_back(tgt);
+        if(clipWorked)
+          newPts.push_back(tgt);
 
         // Figure out the next edge that intersects the bounding box
         auto nextEdge = currEdge;
@@ -191,10 +194,28 @@ bool BoundingBox::IsInside(Point_2 const& pt) const{
   return (x>xMin-compTol)&&(x<xMax+compTol)&&(y>yMin-compTol)&&(y<yMax+compTol);
 }
 
+bool BoundingBox::OnEdge(Point_2 const& pt) const{
+  double x = CGAL::to_double(pt.x());
+  double y = CGAL::to_double(pt.y());
+
+  return (std::abs(x-xMin)<compTol)||(std::abs(x-xMax)<compTol)||(std::abs(y-yMin)<compTol)||(std::abs(y-yMax)<compTol);
+}
+
+
 void BoundingBox::AddCorners(Point_2 const& nextPt, std::vector<Point_2> &polyPts) const
 {
   double backX = CGAL::to_double( polyPts.back().x() );
   double backY = CGAL::to_double( polyPts.back().y() );
+
+
+  if((backX>xMax+compTol)||(backX<xMin-compTol)||(backY<yMin-compTol)||(backY>yMax+compTol)){
+    std::stringstream error;
+    error << "ERROR: In BoundingBox::AddCorners, the last polyPt is not inside the grid cell." << std::endl;
+    error << "  last polyPt = " << backX << ", " << backY << std::endl;
+    error << "  xmin, xmax = " << xMin << ", " << xMax << std::endl;
+    error << "  ymin, ymax = " << yMin << ", " << yMax << std::endl;
+    throw std::runtime_error(error.str());
+  }
 
   double enterX = CGAL::to_double( nextPt.x() );
   double enterY = CGAL::to_double( nextPt.y() );
@@ -231,8 +252,12 @@ void BoundingBox::AddCorners(Point_2 const& nextPt, std::vector<Point_2> &polyPt
     }else{
       std::cerr << "In BoundingBox::AddCorners, the point doesn't seem to be on an edge... " << std::endl;
       for(auto& pt : polyPts){
-        std::cout << "  " << pt << std::endl;
+        std::cerr << "  " << pt << std::endl;
       }
+      std::cerr << "Edges:" << std::endl;
+      std::cerr << "  xmin, xmax = " << xMin << ", " << xMax << std::endl;
+      std::cerr << "  ymin, ymax = " << yMin << ", " << yMax << std::endl;
+
       assert(false);
     }
 

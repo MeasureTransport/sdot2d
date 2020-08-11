@@ -2,6 +2,8 @@
 
 #include "SDOT/PolygonRasterize.h"
 
+#include  "SDOT/Integrands/ConstantIntegrand.h"
+
 // standard includes
 #include <iostream>
 #include <random>
@@ -59,9 +61,46 @@ Eigen::VectorXd LaguerreDiagram::Areas(std::shared_ptr<Distribution2d> const& di
 }
 
 
-double LaguerreDiagram::CellArea(unsigned int cellInd) const
+double LaguerreDiagram::CellArea(unsigned int cellInd,
+                                 std::shared_ptr<Distribution2d> const& dist) const
 {
-  double x1, x2, y1, y2, x3, y3;
+  auto integrand = std::make_shared<ConstantIntegrand>(1.0);
+  return IntegrateOverCell(cellInd, integrand, dist);
+  //
+  // double x1, x2, y1, y2, x3, y3;
+  //
+  // auto beginVert = laguerreCells.at(cellInd)->vertices_begin();
+  // auto vert1 = beginVert;
+  // vert1++;
+  // auto vert2 = vert1;
+  // vert2++;
+  //
+  // x1 = CGAL::to_double( beginVert->x() );
+  // y1 = CGAL::to_double( beginVert->y() );
+  //
+  // //interArea = gridCellDens*CGAL::to_double( overlapPoly->area() );
+  //
+  // double polyArea = 0.0;
+  // double triArea;
+  //
+  // for(; vert2!=laguerreCells.at(cellInd)->vertices_end(); vert2++, vert1++)
+  // {
+  //   x2 = CGAL::to_double( vert1->x() );
+  //   y2 = CGAL::to_double( vert1->y() );
+  //   x3 = CGAL::to_double( vert2->x() );
+  //   y3 = CGAL::to_double( vert2->y() );
+  //
+  //   triArea = 0.5*std::abs((x2*y1-x1*y2)+(x3*y2-x2*y3)+(x1*y3-x3*y1));
+  //   polyArea += triArea;
+  // }
+  //
+  // return polyArea;
+}
+
+double LaguerreDiagram::IntegrateOverCell(unsigned int                     cellInd,
+                         std::shared_ptr<Integrand> const& integrand) const
+{
+  Eigen::Vector2d pt1(2), pt2(2), pt3(2);
 
   auto beginVert = laguerreCells.at(cellInd)->vertices_begin();
   auto vert1 = beginVert;
@@ -69,42 +108,48 @@ double LaguerreDiagram::CellArea(unsigned int cellInd) const
   auto vert2 = vert1;
   vert2++;
 
-  x1 = CGAL::to_double( beginVert->x() );
-  y1 = CGAL::to_double( beginVert->y() );
+  pt1(0) = CGAL::to_double( beginVert->x() );
+  pt1(0) = CGAL::to_double( beginVert->y() );
 
   //interArea = gridCellDens*CGAL::to_double( overlapPoly->area() );
-  double polyArea = 0.0;
+
+  double result = 0.0;
   double triArea;
 
   for(; vert2!=laguerreCells.at(cellInd)->vertices_end(); vert2++, vert1++)
   {
-    x2 = CGAL::to_double( vert1->x() );
-    y2 = CGAL::to_double( vert1->y() );
-    x3 = CGAL::to_double( vert2->x() );
-    y3 = CGAL::to_double( vert2->y() );
+    pt2(0) = CGAL::to_double( vert1->x() );
+    pt2(1) = CGAL::to_double( vert1->y() );
+    pt3(0) = CGAL::to_double( vert2->x() );
+    pt3(1) = CGAL::to_double( vert2->y() );
 
-    triArea = 0.5*std::abs((x2*y1-x1*y2)+(x3*y2-x2*y3)+(x1*y3-x3*y1));
-    polyArea += triArea;
+    result += integrand->TriangularIntegral(pt1,pt2,pt3);
   }
 
-  return polyArea;
+  return result;
 }
 
-
-double LaguerreDiagram::CellArea(unsigned int cellInd, std::shared_ptr<Distribution2d> const& dist) const
+double LaguerreDiagram::IntegrateOverCell(unsigned int                           cellInd,
+                                          std::shared_ptr<Integrand>       const& integrand,
+                                          std::shared_ptr<Distribution2d> const& dist) const
 {
+
   if(dist==nullptr)
-    return CellArea(cellInd);
+    return IntegrateOverCell(cellInd, integrand);
 
   auto& grid = dist->Grid();
 
-  double polyArea = 0.0;
+  double result = 0.0;
 
   // Loop over the grid cells in this Laguerre cell
+  if(laguerreCells.at(cellInd)->size()==0)
+    return 0.0;
+
   PolygonRasterizeIter gridIter(dist->Grid(), laguerreCells.at(cellInd));
 
   unsigned int xInd, yInd;
-  double x1, x2, x3, y1, y2, y3, gridCellDens;
+  Eigen::Vector2d pt1(2), pt2(2), pt3(2);
+  double gridCellDens;
 
   while(gridIter.IsValid()){
 
@@ -114,50 +159,54 @@ double LaguerreDiagram::CellArea(unsigned int cellInd, std::shared_ptr<Distribut
     // The probability in this grid cell
     gridCellDens = dist->Density(xInd,yInd);
 
-    // The area of the intersection of this grid cell and the Laguerre cell
-    double interArea = 0.0;
+    if(gridCellDens>0.0){
 
-    if(gridIter.IsBoundary()){
+      // The area of the intersection of this grid cell and the Laguerre cell
+      double interResult = 0.0;
 
-      // Break the intersection polygon into triangles and add contributions from each triangle
-      std::shared_ptr<PolygonRasterizeIter::Polygon_2> overlapPoly = gridIter.OverlapPoly();
-      assert(overlapPoly);
-      assert(overlapPoly->size()>2); // <- Makes sure there is at least 3 nodes in the polygon
+      if(gridIter.IsBoundary()){
 
-      auto beginVert = overlapPoly->vertices_begin();
-      auto vert1 = beginVert;
-      vert1++;
-      auto vert2 = vert1;
-      vert2++;
+        // Break the intersection polygon into triangles and add contributions from each triangle
+        std::shared_ptr<PolygonRasterizeIter::Polygon_2> overlapPoly = gridIter.OverlapPoly();
+        assert(overlapPoly);
+        assert(overlapPoly->size()>2); // <- Makes sure there is at least 3 nodes in the polygon
 
-      x1 = CGAL::to_double( beginVert->x() );
-      y1 = CGAL::to_double( beginVert->y() );
+        auto beginVert = overlapPoly->vertices_begin();
+        auto vert1 = beginVert;
+        vert1++;
+        auto vert2 = vert1;
+        vert2++;
 
-      //interArea = gridCellDens*CGAL::to_double( overlapPoly->area() );
+        pt1[0] = CGAL::to_double( beginVert->x() );
+        pt1[1] = CGAL::to_double( beginVert->y() );
 
-      for(; vert2!=overlapPoly->vertices_end(); vert2++, vert1++)
-      {
-        x2 = CGAL::to_double( vert1->x() );
-        y2 = CGAL::to_double( vert1->y() );
-        x3 = CGAL::to_double( vert2->x() );
-        y3 = CGAL::to_double( vert2->y() );
+        for(; vert2!=overlapPoly->vertices_end(); vert2++, vert1++)
+        {
+          pt2[0] = CGAL::to_double( vert1->x() );
+          pt2[1] = CGAL::to_double( vert1->y() );
+          pt3[0] = CGAL::to_double( vert2->x() );
+          pt3[1] = CGAL::to_double( vert2->y() );
 
-        double triArea = 0.5*std::abs((x2*y1-x1*y2)+(x3*y2-x2*y3)+(x1*y3-x3*y1));
+          interResult += integrand->TriangularIntegral(pt1,pt2,pt3);
+        }
 
-        interArea += triArea;
+      }else{
+        pt1[0] = grid->xMin + grid->dx*xInd;
+        pt1[1] = grid->yMin + grid->dy*yInd;
+        pt2[0] = grid->xMin + grid->dx*(xInd+1);
+        pt2[1] = grid->xMin + grid->dy*(yInd+1);
+
+        interResult += integrand->RectangularIntegral(pt1,pt2);
+
       }
 
-    }else{
-      interArea += grid->dx*grid->dy;
+      result += interResult*gridCellDens;
     }
-
-    polyArea += interArea*gridCellDens;
-
     gridIter.Increment();
   }
-  return polyArea;
-}
 
+  return result;
+}
 
 
 Eigen::Matrix2Xd LaguerreDiagram::Centroids(std::shared_ptr<Distribution2d> const& dist) const

@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import powerlaw
 
-numPts = 600
+numPts = 1200
 
 xbnds = [0.0,1.0] # minimum and maximum x values
 ybnds = [0.0,1.0] # minimum and maximum y values
@@ -17,7 +17,7 @@ dist = ot.DiscretizedDistribution(grid,dens)
 
 
 # The nugget is meant to prevent probabilities from getting too small and causing issues in the SDOT calculations
-powExp = 0.3
+powExp = 0.1
 nugget = 0.1
 rv = powerlaw(powExp)
 ptProbs = nugget+rv.rvs(size=numPts)

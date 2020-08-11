@@ -10,6 +10,10 @@ PolygonRasterizeIter::PolygonRasterizeIter(std::shared_ptr<RegularGrid> const& g
                                                                                          poly(polyIn)
 {
 
+  if(poly->size()<=1){
+    throw std::runtime_error("Invalid Polygon passed to \"PolygonRasterizeIter\".");
+  }
+
   // Figure out the first y cell in the regular grid that lies within this polygon
   auto bottomVert = polyIn->bottom_vertex();
   int yInd = grid->BottomNode( CGAL::to_double(bottomVert->y()) );// std::ceil( CGAL::to_double(edgesCW.at(0).first->y() - grid->yMin)/grid->dy ) + 1;
@@ -22,8 +26,12 @@ PolygonRasterizeIter::PolygonRasterizeIter(std::shared_ptr<RegularGrid> const& g
 
   // Set up the initial edges.  Do not include horizontal edges.
   // Recall that the  polygon orders vertices in counter-clockwise order
-  edgesCW.push_back( NextEdge(bottomVert, CW, true) );
+  auto temp = NextEdge(bottomVert, CW, true);
+
+  edgesCW.push_back(  temp );
+
   slopesCW.push_back( CGAL::to_double( (edgesCW.front().second->x()-edgesCW.front().first->x()) / (edgesCW.front().second->y()-edgesCW.front().first->y())));
+
 
   edgesCCW.push_back( NextEdge(bottomVert, CCW, true) );
   slopesCCW.push_back( CGAL::to_double( (edgesCCW.front().second->x()-edgesCCW.front().first->x()) / (edgesCCW.front().second->y()-edgesCCW.front().first->y())));
@@ -39,7 +47,6 @@ PolygonRasterizeIter::PolygonRasterizeIter(std::shared_ptr<RegularGrid> const& g
   indices = std::make_pair(xInd_begin,yInd);
   UpdateCellBounds();
   overlapPoly = BoundaryIntersection();
-
 
 }
 
@@ -716,6 +723,7 @@ std::pair<PolygonRasterizeIter::Polygon_2::Vertex_const_iterator,
  if(horizCheck) {
    // Iterate until we find a non-horizontal edge
    double ydiff = CGAL::to_double( tgtVert->y() - srcVert->y() );
+
    while( std::abs(ydiff) < horizTol ){
      srcVert = tgtVert;
      tgtVert = NextVertex(tgtVert,dir);
@@ -746,7 +754,9 @@ PolygonRasterizeIter::Polygon_2::Vertex_const_iterator PolygonRasterizeIter::Nex
    if(currIter==poly->vertices_begin())
      result = poly->vertices_end();
 
-   result--;
+   if(result != poly->vertices_begin())
+     result--;
+
    return result;
  }
 }
