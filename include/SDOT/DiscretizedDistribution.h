@@ -16,7 +16,8 @@ namespace sdot{
     /** Construct the discretized distribution.
         @param[in] gridIn The uniform regular grid used to define this distribution.
         @param[in] probsIn A matrix of the constant density for each grid cell.  The rows of
-                   the matrix correspond to the x index.  This is a density not a
+                   the matrix correspond to the x index with densIn[i,j] corresponding to a
+                   grid cell with bottom left point (xs[i], ys[j]).  This is a density not a
                    probability measure.  Thus, densIn(xInd,yInd)*dx*dy is the probability
                    assigned to cell xInd,yInd.
     */

@@ -55,6 +55,7 @@ namespace sdot {
 
   private:
 
+    Polygon_2 boxPoly;
     const double compTol = 1e-12;
 
   }; // class BoundingBox

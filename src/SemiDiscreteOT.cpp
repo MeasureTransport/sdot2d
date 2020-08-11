@@ -216,7 +216,7 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT::ComputeGradient(Eigen::VectorX
    totalProb += weightedArea;
  }
 
- if(std::abs(totalProb-1.0)>1e-10){
+ if(std::abs(totalProb-1.0)>5e-7){
 
    std::cout << "Warning:  Total probability has an error of " << totalProb-1.0 << std::endl;
    // std::cout << "Prices = " << prices.transpose() << std::endl;

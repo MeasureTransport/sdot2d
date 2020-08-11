@@ -11,6 +11,11 @@ BoundingBox::BoundingBox(double xmin_, double xmax_,
 {
   assert(xMin<xMax);
   assert(yMin<yMax);
+
+  boxPoly.push_back(Point_2(xMin,yMin));
+  boxPoly.push_back(Point_2(xMax,yMin));
+  boxPoly.push_back(Point_2(xMax,yMax));
+  boxPoly.push_back(Point_2(xMin,yMax));
 }
 
 
@@ -83,108 +88,23 @@ bool BoundingBox::ClipSegment(Point_2 &srcPt, Point_2 &tgtPt) const
   }
 }
 
+
 std::shared_ptr<BoundingBox::Polygon_2> BoundingBox::ClipPolygon(std::shared_ptr<BoundingBox::Polygon_2> const& poly) const
 {
 
-  Polygon_2 boxPoly;
-  boxPoly.push_back(Point_2(xMin,yMin));
-  boxPoly.push_back(Point_2(xMax,yMin));
-  boxPoly.push_back(Point_2(xMax,yMax));
-  boxPoly.push_back(Point_2(xMin,yMax));
-
-  std::list<Polygon_with_holes_2> temp;
+  std::vector<Polygon_with_holes_2> temp;
+  temp.reserve(2*poly->size());
   CGAL::intersection(*poly, boxPoly, std::back_inserter(temp));
   if(temp.size()==0){
     return nullptr;
   }
+
   // // There should only be one polygon intersection because everything is simple and convex
   assert(std::distance(temp.begin(),temp.end())==1);
 
   auto outPoly = std::make_shared<Polygon_2>(temp.begin()->outer_boundary());
 
   return outPoly;
-
-  ///////// TODO: FIX BUG BELOW HERE!
-
-  std::vector<Point_2> newPts;
-
-  // Get an edge circulator
-  auto firstEdge = poly->edges_circulator();
-  auto currEdge = firstEdge;
-
-  // Loop over the edges, clipping them to the boundary and adding corners if necessary
-  do {
-
-    bool srcInside = IsInside(currEdge->source());
-    bool tgtInside = IsInside(currEdge->target());
-
-    if(srcInside){
-      newPts.push_back(currEdge->source());
-
-      // If the src is inside but the target is not, then we need to figure out where the edges cross
-      if(!tgtInside){
-
-
-        Point_2 src = currEdge->source();
-        Point_2 tgt = currEdge->target();
-        bool clipWorked = ClipSegment(src,tgt);
-
-        if(clipWorked)
-          newPts.push_back(tgt);
-
-        // Figure out the next edge that intersects the bounding box
-        auto nextEdge = currEdge;
-        nextEdge++;
-        src = nextEdge->source();
-        tgt = nextEdge->target();
-        while(!ClipSegment(src,tgt)){
-          nextEdge++;
-          src = nextEdge->source();
-          tgt = nextEdge->target();
-        }
-
-        // Add any necessary corners and the point where the polygon reenters
-        AddCorners(src, newPts);
-        newPts.push_back(src);
-        //currEdge = nextEdge;
-      }
-
-    // source and target are outside
-    }else{
-
-      Point_2 src = currEdge->source();
-      Point_2 tgt = currEdge->target();
-
-      if(ClipSegment(src,tgt)){
-
-        newPts.push_back(src);
-
-        // If the target is not inside, we might also have to add some corners
-        if(!tgtInside){
-          newPts.push_back(tgt);
-
-          auto nextEdge = currEdge;
-          nextEdge++;
-          src = nextEdge->source();
-          tgt = nextEdge->target();
-          while(!ClipSegment(src,tgt)){
-            nextEdge++;
-            src = nextEdge->source();
-            tgt = nextEdge->target();
-          }
-
-          AddCorners(src, newPts);
-        }
-      }
-    }
-
-  } while((++currEdge) != firstEdge);
-
-  if(newPts.size()<3){
-    return nullptr;
-  }else{
-    return std::make_shared<BoundingBox::Polygon_2>(newPts.begin(), newPts.end());
-  }
 }
 
 bool BoundingBox::IsInside(Point_2 const& pt) const{
