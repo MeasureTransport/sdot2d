@@ -514,9 +514,10 @@ std::shared_ptr<LaguerreDiagram::Polygon_2> LaguerreDiagram::BoundOneCell(PowerD
       Ccb_halfedge_circulator halfEdgeStart = face->ccb();
       Ccb_halfedge_circulator halfEdge = halfEdgeStart;
 
-      std::vector<Point_2> polyPts;
+      // Construct a polygon from the face
+      //std::vector<Point_2> polyPts;
+      std::shared_ptr<Polygon_2> poly = std::make_shared<Polygon_2>();
 
-      // Loop over all of the edges in the face
       do {
 
         bool hasSrc = halfEdge->has_source();
@@ -525,63 +526,89 @@ std::shared_ptr<LaguerreDiagram::Polygon_2> LaguerreDiagram::BoundOneCell(PowerD
         Point_2 srcPt, tgtPt;
         std::tie(srcPt, tgtPt) = GetEdgeVerts(halfEdge);
 
-        bool srcInside = bbox.IsInside(srcPt);
-        bool tgtInside = bbox.IsInside(tgtPt);
+        // always add the source point
+        poly->push_back(srcPt);
 
-        if(srcInside){
-          polyPts.push_back(srcPt);
-
-          // If the src is inside but the target is not, then we need to figure out where the edges cross
-          if(!tgtInside){
-
-            bbox.ClipSegment(srcPt,tgtPt);
-
-            polyPts.push_back(tgtPt);
-
-            // Figure out the next edge that intersects the bounding box
-            auto nextEdge = halfEdge;
-            nextEdge++;
-            std::tie(srcPt, tgtPt) = GetEdgeVerts(nextEdge);
-            while(!bbox.ClipSegment(srcPt,tgtPt)){
-              nextEdge++;
-              std::tie(srcPt, tgtPt) = GetEdgeVerts(nextEdge);
-            }
-
-            // Add any necessary corners and the point where the polygon reenters
-            bbox.AddCorners(srcPt, polyPts);
-            polyPts.push_back(srcPt);
-          }
-
-        // source and target are outside
-        }else{
-
-          if(bbox.ClipSegment(srcPt,tgtPt)){
-
-            polyPts.push_back(srcPt);
-            // If the target is not inside, we might also have to add some corners
-            if(!tgtInside){
-              polyPts.push_back(tgtPt);
-
-              auto nextEdge = halfEdge;
-              nextEdge++;
-              std::tie(srcPt, tgtPt) = GetEdgeVerts(nextEdge);
-              while(!bbox.ClipSegment(srcPt,tgtPt)){
-                nextEdge++;
-                std::tie(srcPt, tgtPt) = GetEdgeVerts(nextEdge);
-              }
-              bbox.AddCorners(srcPt, polyPts);
-            }
-          }
-        }
+        // If the target was at infinity, then make sure to add the finite point
+        if(!hasTgt)
+          poly->push_back(tgtPt);
 
       } while ( ++halfEdge != halfEdgeStart);
 
-      auto outPoly = std::make_shared<Polygon_2>(polyPts.begin(), polyPts.end());//temp.begin()->outer_boundary());
+      // Clip the polygon to the bounding box
+      auto outPoly = bbox.ClipPolygon(poly);
+      //
+      // // Loop over all of the edges in the face
+      // do {
+      //
+      //   bool hasSrc = halfEdge->has_source();
+      //   bool hasTgt = halfEdge->has_target();
+      //
+      //   Point_2 srcPt, tgtPt;
+      //   std::tie(srcPt, tgtPt) = GetEdgeVerts(halfEdge);
+      //
+      //   bool srcInside = bbox.IsInside(srcPt);
+      //   bool tgtInside = bbox.IsInside(tgtPt);
+      //
+      //   if(srcInside){
+      //     polyPts.push_back(srcPt);
+      //
+      //     // If the src is inside but the target is not, then we need to figure out where the edges cross
+      //     if(!tgtInside){
+      //
+      //       bbox.ClipSegment(srcPt,tgtPt);
+      //
+      //       polyPts.push_back(tgtPt);
+      //
+      //       // Figure out the next edge that intersects the bounding box
+      //       auto nextEdge = halfEdge;
+      //       nextEdge++;
+      //       std::tie(srcPt, tgtPt) = GetEdgeVerts(nextEdge);
+      //       while(!bbox.ClipSegment(srcPt,tgtPt)){
+      //         nextEdge++;
+      //         std::tie(srcPt, tgtPt) = GetEdgeVerts(nextEdge);
+      //       }
+      //
+      //       // Add any necessary corners and the point where the polygon reenters
+      //       bbox.AddCorners(srcPt, polyPts);
+      //       polyPts.push_back(srcPt);
+      //     }
+      //
+      //   // source and target are outside
+      //   }else{
+      //
+      //     if(bbox.ClipSegment(srcPt,tgtPt)){
+      //
+      //       polyPts.push_back(srcPt);
+      //       // If the target is not inside, we might also have to add some corners
+      //       if(!tgtInside){
+      //         polyPts.push_back(tgtPt);
+      //
+      //         auto nextEdge = halfEdge;
+      //         nextEdge++;
+      //         std::tie(srcPt, tgtPt) = GetEdgeVerts(nextEdge);
+      //         while(!bbox.ClipSegment(srcPt,tgtPt)){
+      //           nextEdge++;
+      //           std::tie(srcPt, tgtPt) = GetEdgeVerts(nextEdge);
+      //         }
+      //         bbox.AddCorners(srcPt, polyPts);
+      //       }
+      //     }
+      //   }
+      //
+      // } while ( ++halfEdge != halfEdgeStart);
+      //
+      // auto outPoly = std::make_shared<Polygon_2>(polyPts.begin(), polyPts.end());//temp.begin()->outer_boundary());
       assert(outPoly);
 
       if(outPoly->size()<3){
         std::stringstream msg;
-        msg << "Could not construct Laguerre diagram. Found empty Laguerre cell.";
+        msg << "Could not construct Laguerre diagram. Found empty Laguerre cell.\n";
+        msg << "  Laguerre cell vertices:\n";
+
+        for(auto it = outPoly->vertices_begin(); it!=outPoly->vertices_end(); ++it)
+          msg << "    (" <<it->x() << "," << it->y() << ")\n";
+        msg << "\n";
         throw LaguerreDiagram::ConstructionException(msg.str());
       }
 
@@ -606,8 +633,8 @@ std::shared_ptr<LaguerreDiagram::Polygon_2> LaguerreDiagram::BoundOneCell(PowerD
       // Sanity check to make sure there are no duplicate vertices or edge crossings
       if(!outPoly->is_simple()){
         std::cout << "Created a polygon that is not simple:\n";
-        for(auto& p : polyPts){
-          std::cout << "(" << CGAL::to_double(p.x()) << "," << CGAL::to_double(p.y()) << ") -> ";
+        for(auto it = outPoly->vertices_begin(); it!=outPoly->vertices_end(); ++it){
+          std::cout << "(" << CGAL::to_double(it->x()) << "," << CGAL::to_double(it->y()) << ") -> ";
         }
         std::cout << std::endl;
         assert(outPoly->is_simple());
