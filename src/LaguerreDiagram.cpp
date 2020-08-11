@@ -537,68 +537,6 @@ std::shared_ptr<LaguerreDiagram::Polygon_2> LaguerreDiagram::BoundOneCell(PowerD
 
       // Clip the polygon to the bounding box
       auto outPoly = bbox.ClipPolygon(poly);
-      //
-      // // Loop over all of the edges in the face
-      // do {
-      //
-      //   bool hasSrc = halfEdge->has_source();
-      //   bool hasTgt = halfEdge->has_target();
-      //
-      //   Point_2 srcPt, tgtPt;
-      //   std::tie(srcPt, tgtPt) = GetEdgeVerts(halfEdge);
-      //
-      //   bool srcInside = bbox.IsInside(srcPt);
-      //   bool tgtInside = bbox.IsInside(tgtPt);
-      //
-      //   if(srcInside){
-      //     polyPts.push_back(srcPt);
-      //
-      //     // If the src is inside but the target is not, then we need to figure out where the edges cross
-      //     if(!tgtInside){
-      //
-      //       bbox.ClipSegment(srcPt,tgtPt);
-      //
-      //       polyPts.push_back(tgtPt);
-      //
-      //       // Figure out the next edge that intersects the bounding box
-      //       auto nextEdge = halfEdge;
-      //       nextEdge++;
-      //       std::tie(srcPt, tgtPt) = GetEdgeVerts(nextEdge);
-      //       while(!bbox.ClipSegment(srcPt,tgtPt)){
-      //         nextEdge++;
-      //         std::tie(srcPt, tgtPt) = GetEdgeVerts(nextEdge);
-      //       }
-      //
-      //       // Add any necessary corners and the point where the polygon reenters
-      //       bbox.AddCorners(srcPt, polyPts);
-      //       polyPts.push_back(srcPt);
-      //     }
-      //
-      //   // source and target are outside
-      //   }else{
-      //
-      //     if(bbox.ClipSegment(srcPt,tgtPt)){
-      //
-      //       polyPts.push_back(srcPt);
-      //       // If the target is not inside, we might also have to add some corners
-      //       if(!tgtInside){
-      //         polyPts.push_back(tgtPt);
-      //
-      //         auto nextEdge = halfEdge;
-      //         nextEdge++;
-      //         std::tie(srcPt, tgtPt) = GetEdgeVerts(nextEdge);
-      //         while(!bbox.ClipSegment(srcPt,tgtPt)){
-      //           nextEdge++;
-      //           std::tie(srcPt, tgtPt) = GetEdgeVerts(nextEdge);
-      //         }
-      //         bbox.AddCorners(srcPt, polyPts);
-      //       }
-      //     }
-      //   }
-      //
-      // } while ( ++halfEdge != halfEdgeStart);
-      //
-      // auto outPoly = std::make_shared<Polygon_2>(polyPts.begin(), polyPts.end());//temp.begin()->outer_boundary());
       assert(outPoly);
 
       if(outPoly->size()<3){
