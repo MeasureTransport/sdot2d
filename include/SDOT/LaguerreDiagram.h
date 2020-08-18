@@ -209,6 +209,18 @@ private:
 
   void CreateBoundedCells(Eigen::Matrix2Xd const& pts);
 
+  /** This function clips a polygon to the halfspace defined by the Laguerre diagram face handle.
+      This sdefines one part of the Sutherland-Hodgman algorthm used here to bound
+      the unbounded Laguerre diagram.
+      @param[in] poly The polygon we want to clip.
+      @param[in] halfEdge The half edge describing one edge (possibly unbounded) in the Laguerre cell.
+      @returns A shared pointer to the polygon.     Note that this might just be the same as the input if no clipping is necessary.
+  */
+  std::shared_ptr<LaguerreDiagram::Polygon_2> ClipToHalfspace(std::shared_ptr<LaguerreDiagram::Polygon_2> const& poly,
+                                                              Ccb_halfedge_circulator halfEdge);
+
+
+
   std::shared_ptr<Polygon_2> BoundOneCell(PowerDiagram::Face_handle const& face);
 
   void AddInternalEdges(PowerDiagram::Face_handle const& face);

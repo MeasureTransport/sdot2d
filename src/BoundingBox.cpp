@@ -95,6 +95,7 @@ std::shared_ptr<BoundingBox::Polygon_2> BoundingBox::ClipPolygon(std::shared_ptr
   std::vector<Polygon_with_holes_2> temp;
   temp.reserve(2*poly->size());
   CGAL::intersection(*poly, boxPoly, std::back_inserter(temp));
+  
   if(temp.size()==0){
     return nullptr;
   }

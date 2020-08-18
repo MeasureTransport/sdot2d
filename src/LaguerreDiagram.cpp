@@ -504,81 +504,122 @@ std::pair<LaguerreDiagram::Point_2,LaguerreDiagram::Point_2> LaguerreDiagram::Ge
   return std::make_pair(srcPt, tgtPt);
 }
 
+std::shared_ptr<LaguerreDiagram::Polygon_2> LaguerreDiagram::ClipToHalfspace(std::shared_ptr<LaguerreDiagram::Polygon_2> const& poly,
+                                                                             Ccb_halfedge_circulator  halfEdge)
+{
+  /////////////////////////////////////////////////////////////
+  // First, get a point and direction defining the halfspace
+  Point_2 midPt;
+  Vector_2 dir;
+
+  // Get the node in the triangulation on the other side of this edge
+  auto vt = halfEdge->twin()->face()->dual()->point();
+  auto vs = halfEdge->face()->dual()->point();
+
+  // Compute the direction of dividing line between this cell and the other cell
+  dir = Vector_2(vt.x()-vs.x(), vt.y()-vs.y());
+  dir /= std::sqrt(CGAL::to_double(dir.squared_length()));
+
+  // Find the weighted mid point between the triangulation sites
+  double ts = CGAL::to_double( CGAL::squared_distance(vt.point(), vs.point()).exact() );
+  double h = (0.5/ts)*CGAL::to_double(ts + vs.weight() - vt.weight());
+  midPt = vs.point() + h*(vt.point()-vs.point());
+
+  /////////////////////////////////////////////////////////////
+  // Clip nodes and segments in poly to the half edge
+  std::shared_ptr<Polygon_2> outPoly = std::make_shared<Polygon_2>();
+  for(auto it=poly->edges_begin(); it!=poly->edges_end(); ++it){
+    auto src = it->source();
+    auto tgt = it->target();
+
+    bool srcInside = ((src.x()-midPt.x())*dir.x() + (src.y()-midPt.y())*dir.y() <= 0);
+    bool tgtInside = ((tgt.x()-midPt.x())*dir.x() + (tgt.y()-midPt.y())*dir.y() <= 0);
+
+    bool addIntersection = false;
+    // Is the source node inside the halfspace?
+    if(srcInside){
+      outPoly->push_back(src);
+
+      // If the source is inside but the target is outside, we need to add the intersection
+      if(!tgtInside)
+        addIntersection = true;
+
+    // If the source is outside but the target is inside, we need to add the intersection point
+    }else if(tgtInside){
+      addIntersection = true;
+    }
+
+    if(addIntersection){
+      double num = CGAL::to_double(-dir.x()*(src.x()-midPt.x())-dir.y()*(src.y()-midPt.y()));
+      double den = CGAL::to_double(dir.x()*(tgt.x()-src.x()) + dir.y()*(tgt.y()-src.y()));
+      double alpha = num/den;
+
+      //Point_2 interPt(src.x()+alpha*(tgt.x()-src.x()), src.y()+alpha*(tgt.y()-src.y()));
+      //std::cout << "Error = " << (interPt.x()-midPt.x())*dir.x() + (interPt.y()-midPt.y())*dir.y() << std::endl;
+      outPoly->push_back( Point_2(src.x()+alpha*(tgt.x()-src.x()), src.y()+alpha*(tgt.y()-src.y())) );
+    }
+  }
+
+  return outPoly;
+}
+
 
 std::shared_ptr<LaguerreDiagram::Polygon_2> LaguerreDiagram::BoundOneCell(PowerDiagram::Face_handle const& face)
 {
-      // Get the point in the Regular triangulation at the center of this Laguerre cell
-      auto vs = face->dual()->point();
+    /* Uses the Sutherland-Hodgman algorithm (https://en.wikipedia.org/wiki/Sutherland%E2%80%93Hodgman_algorithm)
+       to compute the intersection of the unbounded Laguerre diagram and the bounding box.
+    */
 
-      // Loop over the edges in the face
-      Ccb_halfedge_circulator halfEdgeStart = face->ccb();
-      Ccb_halfedge_circulator halfEdge = halfEdgeStart;
+    auto poly = std::make_shared<Polygon_2>();
+    poly->push_back( Point_2(bbox.xMin, bbox.yMin));
+    poly->push_back( Point_2(bbox.xMax, bbox.yMin));
+    poly->push_back( Point_2(bbox.xMax, bbox.yMax));
+    poly->push_back( Point_2(bbox.xMin, bbox.yMax));
 
-      // Construct a polygon from the face
-      //std::vector<Point_2> polyPts;
-      std::shared_ptr<Polygon_2> poly = std::make_shared<Polygon_2>();
+     // Loop over the edges in the face
+     Ccb_halfedge_circulator halfEdgeStart = face->ccb();
+     Ccb_halfedge_circulator halfEdge = halfEdgeStart;
 
-      do {
 
-        bool hasSrc = halfEdge->has_source();
-        bool hasTgt = halfEdge->has_target();
 
-        Point_2 srcPt, tgtPt;
-        std::tie(srcPt, tgtPt) = GetEdgeVerts(halfEdge);
+     // Construct a polygon from the face
+     do {
+       poly = ClipToHalfspace(poly, halfEdge);
+     } while ( ++halfEdge != halfEdgeStart);
+     //
+     // std::cout << "==================================" << std::endl;
+     // std::cout << "Unbounded diagram = " << std::endl;
+     // halfEdgeStart = face->ccb();
+     // halfEdge = halfEdgeStart;
+     // do {
+     //   if(halfEdge->has_source()){
+     //     std::cout << "    (" << halfEdge->source()->point().x() << "," << halfEdge->source()->point().y() << "), ";
+     //   }else{
+     //     std::cout << "    infty -> ";
+     //   }
+     //   if(halfEdge->has_target()){
+     //     std::cout << "    (" << halfEdge->target()->point().x() << "," << halfEdge->target()->point().y() << "), ";
+     //   }else{
+     //     std::cout << "infty" << std::endl;
+     //   }
+     // } while ( ++halfEdge != halfEdgeStart);
+     //
+     // std::cout << "After clipping diagram = " << std::endl;
+     // for(auto it=poly->edges_begin(); it!=poly->edges_end(); ++it){
+     //   std::cout << "    (" << it->source().x() << "," << it->source().y() << "), (" << it->target().x() << "," << it->target().y() << ")" << std::endl;
+     // }
+     if(poly->size()<3){
+       std::stringstream msg;
+       msg << "\nCould not construct Laguerre diagram. Found empty Laguerre cell.\n";
+       msg << "  Laguerre cell vertices:\n";
 
-        // always add the source point
-        poly->push_back(srcPt);
+       for(auto it = poly->vertices_begin(); it!=poly->vertices_end(); ++it)
+         msg << "    (" <<it->x() << "," << it->y() << ")\n";
+       msg << "\n";
+       throw LaguerreDiagram::ConstructionException(msg.str());
+     }
 
-        // If the target was at infinity, then make sure to add the finite point
-        if(!hasTgt)
-          poly->push_back(tgtPt);
-
-      } while ( ++halfEdge != halfEdgeStart);
-
-      // Clip the polygon to the bounding box
-      auto outPoly = bbox.ClipPolygon(poly);
-      assert(outPoly);
-
-      if(outPoly->size()<3){
-        std::stringstream msg;
-        msg << "Could not construct Laguerre diagram. Found empty Laguerre cell.\n";
-        msg << "  Laguerre cell vertices:\n";
-
-        for(auto it = outPoly->vertices_begin(); it!=outPoly->vertices_end(); ++it)
-          msg << "    (" <<it->x() << "," << it->y() << ")\n";
-        msg << "\n";
-        throw LaguerreDiagram::ConstructionException(msg.str());
-      }
-
-      // Remove near duplicate vertices
-      auto currVert = outPoly->vertices_begin();
-      auto nextVert = currVert;
-      nextVert++;
-      while(nextVert != outPoly->vertices_end()){
-
-        if( CGAL::squared_distance(*nextVert, *currVert)< compTol){
-          nextVert = outPoly->erase(nextVert);
-        }else{
-          currVert = nextVert;
-          nextVert++;
-        }
-      }
-
-      if(CGAL::squared_distance(*outPoly->vertices_begin(), *currVert)< compTol){
-        outPoly->erase(currVert);
-      }
-
-      // Sanity check to make sure there are no duplicate vertices or edge crossings
-      if(!outPoly->is_simple()){
-        std::cout << "Created a polygon that is not simple:\n";
-        for(auto it = outPoly->vertices_begin(); it!=outPoly->vertices_end(); ++it){
-          std::cout << "(" << CGAL::to_double(it->x()) << "," << CGAL::to_double(it->y()) << ") -> ";
-        }
-        std::cout << std::endl;
-        assert(outPoly->is_simple());
-      }
-
-      return outPoly;
+     return poly;
 }
 
 
@@ -594,7 +635,6 @@ void LaguerreDiagram::CreateBoundedCells(Eigen::Matrix2Xd const& pts)
     faces.at(faceIter->dual()->info()) = *faceIter;
     faceCount++;
   }
-
   if(faceCount!=numPts){
     std::stringstream msg;
     msg << "Could not construct Laguerre diagram. ";
