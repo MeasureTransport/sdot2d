@@ -22,9 +22,13 @@ for i in range(Ns[0]):
         else:
             densVals[i,j] = 0.0
 
+
+
+# Set the options for Lloyd's algorithm and the underlying optimization problem for the node prices.
+opts = {'Lloyd Steps':200, 'Lloyd Tol':1e-3, 'Max Steps': 100}
+
 # Construct the centroidal diagram with capacity constraints
 dist = ot.DiscretizedDistribution(grid,densVals)
-opts = {'Lloyd Steps':200, 'Lloyd Tol':1e-3}
 diag = ot.SemidiscreteOT.BuildCentroidal(dist, numPts, opts)
 
 # Visualize the results, using the area of each cell as a color
