@@ -22,6 +22,7 @@ set(LibrarySources
     src/Polygon.cpp
     src/Integrands/ConstantIntegrand.cpp
     src/Integrands/TransportIntegrand.cpp
+    src/OptionUtilities.cpp
 )
 
 # Set the source files for the python wrapper

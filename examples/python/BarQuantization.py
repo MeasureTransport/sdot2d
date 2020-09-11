@@ -20,11 +20,12 @@ for i in range(Ns[0]):
         if((pt[0]<0.8)&(pt[1]<0.6)&(pt[1]>0.4)):
             densVals[i,j] = 1.0
         else:
-            densVals[i,j] = 1e-4
+            densVals[i,j] = 0.0
 
 # Construct the centroidal diagram with capacity constraints
 dist = ot.DiscretizedDistribution(grid,densVals)
-diag = ot.SemidiscreteOT.BuildCentroidal(dist, numPts)
+opts = {'Lloyd Steps':200, 'Lloyd Tol':1e-3}
+diag = ot.SemidiscreteOT.BuildCentroidal(dist, numPts, opts)
 
 # Visualize the results, using the area of each cell as a color
 areas = diag.Areas(dist)

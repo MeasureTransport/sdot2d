@@ -463,24 +463,28 @@ Eigen::SparseMatrix<double> SemidiscreteOT::ComputeHessian(LaguerreDiagram const
 // }
 
 
-std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd const& prices0, unsigned int printLevel)
+std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd                  const& prices0,
+                                                         OptionList                              options)
 {
   assert(prices0.size()==discrPts.cols());
   const unsigned int dim = prices0.size();
 
-  // Trust region approach with a double dogleg step
-  double trustRadius = 1.0;
-  const unsigned int maxEvals = 100;
-  const double xtol_abs = 1e-13*std::sqrt(double(dim));
-  const double gtol_abs = 2e-4*std::sqrt(double(dim));
-  const double ftol_abs = 1e-11;
-  const double acceptRatio = 1e-4;//0.1;
+  unsigned int printLevel = GetOpt("Print Level", options, 3);
 
-  const double shrinkRatio = 1e-4;//0.1;
-  const double growRatio = 0.75;
-  const double growRate = 2.0;
-  const double shrinkRate = 0.25;
-  const double maxRadius = 10;
+  // Trust region approach with a double dogleg step
+  double trustRadius = GetOpt("Trust Radius", options, 1.0);
+  const unsigned int maxEvals = GetOpt("Max Steps", options, 10.0);
+
+  const double xtol_abs = GetOpt("XTol Abs", options, 1e-13*std::sqrt(double(dim)));
+  const double gtol_abs = GetOpt("GTol Abs", options, 2e-4*std::sqrt(double(dim)));
+  const double ftol_abs = GetOpt("FTol Abs", options, 1e-11);
+
+  const double acceptRatio = GetOpt("Accept Ratio", options, 1e-4);//0.1;
+  const double shrinkRatio = GetOpt("Shrink Ratio", options, 1e-4);//0.1;
+  const double growRatio = GetOpt("Grow Ratio", options, 0.75);
+  const double growRate = GetOpt("Grow Rate", options, 2.0);
+  const double shrinkRate = GetOpt("Shrink Rate", options, 0.25);
+  const double maxRadius = GetOpt("Max Radius", options, 10);
 
 
 
@@ -694,9 +698,13 @@ Eigen::VectorXd SemidiscreteOT::SolveSubProblem(double obj,
 std::shared_ptr<LaguerreDiagram> SemidiscreteOT::BuildCentroidal(std::shared_ptr<Distribution2d> const& dist,
                                                                  Eigen::Matrix2Xd                const& initialPoints,
                                                                  Eigen::VectorXd                 const& pointProbs,
-                                                                 unsigned int                           maxIts,
-                                                                 double                                 tol)
+                                                                 OptionList                             opts)
 {
+
+  unsigned int maxIts =  GetOpt("Lloyd Steps", opts, 100);
+  double tol = GetOpt("Lloyd Tol", opts, 1e-3);
+
+  std::cout << "Maximum iterations = " << maxIts << std::endl;
   const unsigned int numPts = pointProbs.size();
   assert(numPts==initialPoints.cols());
 
@@ -710,7 +718,7 @@ std::shared_ptr<LaguerreDiagram> SemidiscreteOT::BuildCentroidal(std::shared_ptr
   std::cout << "Computing constrained centroidal diagram." << std::endl;
   for(unsigned int i=0; i<maxIts; ++i){
     assert(ot);
-    ot->Solve(Eigen::VectorXd::Ones(numPts),2);
+    ot->Solve(Eigen::VectorXd::Ones(numPts));
 
     newPts = ot->Diagram()->Centroids(dist);
     resid = (newPts - pts).cwiseAbs().maxCoeff();
@@ -732,19 +740,17 @@ std::shared_ptr<LaguerreDiagram> SemidiscreteOT::BuildCentroidal(std::shared_ptr
 
 std::shared_ptr<LaguerreDiagram> SemidiscreteOT::BuildCentroidal(std::shared_ptr<Distribution2d> const& dist,
                                                                  Eigen::VectorXd                 const& probs,
-                                                                 unsigned int                           maxIts,
-                                                                 double                                 tol)
+                                                                 OptionList                             opts)
 {
   BoundingBox bbox(dist->Grid()->xMin, dist->Grid()->xMax, dist->Grid()->yMin, dist->Grid()->yMax);
   Eigen::Matrix2Xd initialPts = LaguerreDiagram::LatinHypercubeSample(bbox, probs.size());
-  return BuildCentroidal(dist, initialPts, probs, maxIts, tol);
+  return BuildCentroidal(dist, initialPts, probs, opts);
 }
 
 std::shared_ptr<LaguerreDiagram> SemidiscreteOT::BuildCentroidal(std::shared_ptr<Distribution2d> const& dist,
                                                                  unsigned int                           numPts,
-                                                                 unsigned int                           maxIts,
-                                                                 double                                 tol)
+                                                                 OptionList                             opts)
 {
   Eigen::VectorXd probs = (1.0/numPts)*Eigen::VectorXd::Ones(numPts);
-  return BuildCentroidal(dist, probs, maxIts, tol);
+  return BuildCentroidal(dist, probs, opts);
 }

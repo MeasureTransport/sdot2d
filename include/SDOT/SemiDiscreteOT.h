@@ -8,6 +8,8 @@
 #include "SDOT/LaguerreDiagram.h"
 #include "SDOT/PolygonRasterize.h"
 
+#include "SDOT/OptionUtilities.h"
+
 namespace sdot{
 
   /** Class for solving semi-discrete optimal transport problems. */
@@ -36,7 +38,7 @@ namespace sdot{
         the authors wish to minimize the maximum of the Kantorovich dual with
         respect to the point locations.  We will call this the centroidal objective
         because it was used in the Xin et al. paper to construct centroidal
-        power diagrams.    This function, PointGradien(), computes the gradient
+        power diagrams.    This function, PointGradient(), computes the gradient
         of the centroidal objective with respect to the point locations.  The
         form of the gradient is given in (9) of Xin et al:
         \f[
@@ -64,7 +66,7 @@ namespace sdot{
     /** Solves the dual OT problem for the prices.  Uses a Trust region newton method.
     */
     std::pair<Eigen::VectorXd, double> Solve(Eigen::VectorXd const& prices0,
-                                             unsigned int printLevel=2);
+                                             OptionList             opts = OptionList());
 
     /** Returns the Laguerre diagram that was constructed during Solve.  If the
     diagram hasn't  been constructed yet, the returned shared_ptr will be a nullptr.
@@ -77,18 +79,15 @@ namespace sdot{
     static std::shared_ptr<LaguerreDiagram> BuildCentroidal(std::shared_ptr<Distribution2d> const& distIn,
                                                             Eigen::Matrix2Xd                const& initialPoints,
                                                             Eigen::VectorXd                 const& pointProbs,
-                                                            unsigned int                           maxIts=200,
-                                                            double                                 tol=1e-3);
+                                                            OptionList                             opts = OptionList());
 
     static std::shared_ptr<LaguerreDiagram> BuildCentroidal(std::shared_ptr<Distribution2d> const& distIn,
                                                             Eigen::VectorXd                 const& pointProbs,
-                                                            unsigned int                           maxIts=200,
-                                                            double                                 tol=1e-3);
+                                                            OptionList                             opts = OptionList());
 
     static std::shared_ptr<LaguerreDiagram> BuildCentroidal(std::shared_ptr<Distribution2d> const& distIn,
                                                             unsigned int                           numPts,
-                                                            unsigned int                           maxIts=200,
-                                                            double                                 tol=1e-3);
+                                                            OptionList                             opts = OptionList());
 
   private:
 
