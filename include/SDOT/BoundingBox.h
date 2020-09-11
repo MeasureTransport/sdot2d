@@ -55,6 +55,11 @@ namespace sdot {
 
   private:
 
+    std::shared_ptr<Polygon_2> ClipRight(std::shared_ptr<Polygon_2> const& poly) const;
+    std::shared_ptr<Polygon_2> ClipLeft(std::shared_ptr<Polygon_2> const& poly) const;
+    std::shared_ptr<Polygon_2> ClipTop(std::shared_ptr<Polygon_2> const& poly) const;
+    std::shared_ptr<Polygon_2> ClipBottom(std::shared_ptr<Polygon_2> const& poly) const;
+
     Polygon_2 boxPoly;
     const double compTol = 1e-12;
 

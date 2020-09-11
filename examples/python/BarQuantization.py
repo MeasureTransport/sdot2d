@@ -20,7 +20,7 @@ for i in range(Ns[0]):
         if((pt[0]<0.8)&(pt[1]<0.6)&(pt[1]>0.4)):
             densVals[i,j] = 1.0
         else:
-            densVals[i,j] = 0.0
+            densVals[i,j] = 1e-4
 
 
 

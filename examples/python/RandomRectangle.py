@@ -2,7 +2,7 @@ import pysdot as ot
 import numpy as np
 import matplotlib.pyplot as plt
 
-numPts = 3
+numPts = 500
 
 xbnds = [0.0,1.0] # minimum and maximum x values
 ybnds = [0.0,1.0] # minimum and maximum y values

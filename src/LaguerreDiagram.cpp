@@ -97,8 +97,8 @@ double LaguerreDiagram::CellArea(unsigned int cellInd,
   // return polyArea;
 }
 
-double LaguerreDiagram::IntegrateOverCell(unsigned int                     cellInd,
-                         std::shared_ptr<Integrand> const& integrand) const
+double LaguerreDiagram::IntegrateOverCell(unsigned int                      cellInd,
+                                          std::shared_ptr<Integrand> const& integrand) const
 {
   Eigen::Vector2d pt1(2), pt2(2), pt3(2);
 
@@ -134,6 +134,7 @@ double LaguerreDiagram::IntegrateOverCell(unsigned int                          
                                           std::shared_ptr<Distribution2d> const& dist) const
 {
 
+  auto start = std::chrono::steady_clock::now();
   if(dist==nullptr)
     return IntegrateOverCell(cellInd, integrand);
 
@@ -145,11 +146,21 @@ double LaguerreDiagram::IntegrateOverCell(unsigned int                          
   if(laguerreCells.at(cellInd)->size()==0)
     return 0.0;
 
+  auto start2 = std::chrono::steady_clock::now();
   PolygonRasterizeIter gridIter(dist->Grid(), laguerreCells.at(cellInd));
+  auto end2 = std::chrono::steady_clock::now();
+  double setup_time = std::chrono::duration<double>(end2-start2).count();
 
   unsigned int xInd, yInd;
   Eigen::Vector2d pt1(2), pt2(2), pt3(2);
   double gridCellDens;
+
+  double bndry_total = 0;
+  int num_bndry = 0;
+  double int_total = 0;
+  double incr_total = 0;
+  int num_int = 0;
+  int num_incr = 0;
 
   while(gridIter.IsValid()){
 
@@ -165,6 +176,7 @@ double LaguerreDiagram::IntegrateOverCell(unsigned int                          
       double interResult = 0.0;
 
       if(gridIter.IsBoundary()){
+        start2 = std::chrono::steady_clock::now();
 
         // Break the intersection polygon into triangles and add contributions from each triangle
         std::shared_ptr<PolygonRasterizeIter::Polygon_2> overlapPoly = gridIter.OverlapPoly();
@@ -190,7 +202,13 @@ double LaguerreDiagram::IntegrateOverCell(unsigned int                          
           interResult += integrand->TriangularIntegral(pt1,pt2,pt3);
         }
 
+        end2 = std::chrono::steady_clock::now();
+        bndry_total += std::chrono::duration<double>(end2-start2).count();
+        num_bndry++;
+
       }else{
+        start2 = std::chrono::steady_clock::now();
+
         pt1[0] = grid->xMin + grid->dx*xInd;
         pt1[1] = grid->yMin + grid->dy*yInd;
         pt2[0] = grid->xMin + grid->dx*(xInd+1);
@@ -198,13 +216,32 @@ double LaguerreDiagram::IntegrateOverCell(unsigned int                          
 
         interResult += integrand->RectangularIntegral(pt1,pt2);
 
+        end2 = std::chrono::steady_clock::now();
+        int_total += std::chrono::duration<double>(end2-start2).count();
+        num_int++;
+
       }
 
       result += interResult*gridCellDens;
     }
+
+    start2 = std::chrono::steady_clock::now();
+
     gridIter.Increment();
+
+    end2 = std::chrono::steady_clock::now();
+    incr_total += std::chrono::duration<double>(end2-start2).count();
+    num_incr++;
   }
 
+  auto end = std::chrono::steady_clock::now();
+  // std::cout << "\nIntegration total time: " << std::chrono::duration<double>(end-start).count() << std::endl;
+  // std::cout << "   Setup: " << setup_time << std::endl;
+  // std::cout << "   Increment (total, avg): (" << incr_total << ", " << incr_total/num_incr << ")\n";
+  // std::cout << "   Boundary (total, avg): (" << bndry_total << ", " << bndry_total/num_bndry << ")\n";
+  // std::cout << "   Interior (total, avg): (" << int_total << ", " << int_total/num_int << ")\n";
+  // std::cout << "   Other : " << std::chrono::duration<double>(end-start).count() - incr_total - bndry_total - int_total << std::endl;
+  // std::cout << std::endl;
   return result;
 }
 
@@ -231,6 +268,7 @@ Eigen::Matrix2Xd LaguerreDiagram::SeedPts() const
     unsigned int ind = pt->info();
     pts(0,ind) = CGAL::to_double(pt->point().x());
     pts(1,ind) = CGAL::to_double(pt->point().y());
+
   }
 
   return pts;
@@ -378,6 +416,8 @@ Eigen::Vector2d LaguerreDiagram::CellCentroid(unsigned int cellInd, std::shared_
 
     // The probability in this grid cell
     gridCellDens = dist->Density(xInd,yInd);
+    if(gridCellDens<std::numeric_limits<double>::epsilon())
+      gridCellDens += std::numeric_limits<double>::epsilon();
 
     // The area of the intersection of this grid cell and the Laguerre cell
     //double interArea = 0.0;
