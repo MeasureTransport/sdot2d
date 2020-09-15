@@ -67,7 +67,7 @@ axs[0].set_title('Original Image')
 axs[1].set_title('Thresholded Image')
 
 
-numPts = 10000
+numPts = 1000
 xbnds = [0.0,threshImg.shape[0]/np.min(threshImg.shape)] # minimum and maximum x values
 ybnds = [0.0,threshImg.shape[1]/np.min(threshImg.shape)] # minimum and maximum y values
 
@@ -77,7 +77,7 @@ grid = ot.RegularGrid(bbox, threshImg.shape[0], threshImg.shape[1])
 # Construct the centroidal diagram with capacity constraints
 dist = ot.DiscretizedDistribution(grid,threshImg)
 
-opts = {'Lloyd Steps':200, 'Lloyd Tol':1e-3, 'Max Steps': 100}
+opts = {'Lloyd Steps':200, 'Lloyd Tol':1e-3, 'Max Steps': 100, 'GTol Abs':1e-3}
 diag = ot.SemidiscreteOT.BuildCentroidal(dist, numPts, opts)
 
 clippedPolys, icePoly = ClipToIce(threshImg.T, diag, xbnds, ybnds)

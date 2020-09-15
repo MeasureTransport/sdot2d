@@ -89,12 +89,15 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT::ComputeGradient(Eigen::VectorX
  Eigen::VectorXd objParts(numCells);
  Eigen::VectorXd gradient(numCells);
 
- double totalProb = 0.0;
+ Eigen::VectorXd probs(numCells);
 
  //Eigen::MatrixXd cellAreas = Eigen::MatrixXd::Zero(grid->Nx, grid->Ny);
- auto area_integrand = std::make_shared<ConstantIntegrand>();
-
+#if defined(_OPENMP)
+ #pragma omp parallel for
+#endif
  for(int cellInd=0; cellInd<numCells; ++cellInd){
+
+   auto area_integrand = std::make_shared<ConstantIntegrand>();
 
    auto trans_integrand = std::make_shared<TransportIntegrand>(discrPts.col(cellInd));
 
@@ -105,118 +108,10 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT::ComputeGradient(Eigen::VectorX
                      - prices(cellInd)*weightedArea;
 
    gradient(cellInd) = discrProbs(cellInd) - weightedArea;
-
-   // std::cout << "Cell " << cellInd << " has vertices:\n";
-   // Eigen::Matrix2Xd verts = lagDiag.GetCellVertices(cellInd);
-   // for(int col=0; col<verts.cols();++col)
-   //   std::cout <<"[" << verts(0,col) << "," << verts(1,col) << "], ";
-   // std::cout << std::endl;
-   //
-   // std::cout << "  and probability " << weightedArea << std::endl;
-   // //
-   // // Loop over the grid cells in this Laguerre cell
-   // auto lagCell = lagDiag.GetCell(cellInd)->ToCGAL();
-   // PolygonRasterizeIter gridIter(grid,lagCell);
-   //
-   // unsigned int xInd, yInd;
-   // double x1, x2, x3, y1, y2, y3, gridCellDens;
-   //
-   // double unweightedArea = 0.0;
-   //
-   // while(gridIter.IsValid()){
-   //
-   //   xInd = gridIter.Indices().first;
-   //   yInd = gridIter.Indices().second;
-   //
-   //   // The probability in this grid cell
-   //   gridCellDens = dist->Density(xInd,yInd);
-   //
-   //   double interArea = 0.0;
-   //
-   //   //double interObj = 0.0;
-   //
-   //
-   //   if(gridIter.IsBoundary()){
-   //
-   //     // Break the intersection polygon into triangles and add contributions from each triangle
-   //     std::shared_ptr<PolygonRasterizeIter::Polygon_2> overlapPoly = gridIter.OverlapPoly();
-   //     assert(overlapPoly);
-   //     assert(overlapPoly->size()>2); // <- Makes sure there is at least 3 nodes in the polygon
-   //
-   //     auto beginVert = overlapPoly->vertices_begin();
-   //     auto vert1 = beginVert;
-   //     vert1++;
-   //     auto vert2 = vert1;
-   //     vert2++;
-   //
-   //     x1 = CGAL::to_double( beginVert->x() );
-   //     y1 = CGAL::to_double( beginVert->y() );
-   //
-   //     //interArea = gridCellDens*CGAL::to_double( overlapPoly->area() );
-   //     std::cout << "Overlap poly = \n";
-   //     std::cout << x1 << ", " << y1 << std::endl;
-   //     std::cout << CGAL::to_double( vert1->x() ) << ", " << CGAL::to_double( vert1->y() ) << std::endl;
-   //
-   //     for(; vert2!=overlapPoly->vertices_end(); vert2++, vert1++)
-   //     {
-   //       x2 = CGAL::to_double( vert1->x() );
-   //       y2 = CGAL::to_double( vert1->y() );
-   //       x3 = CGAL::to_double( vert2->x() );
-   //       y3 = CGAL::to_double( vert2->y() );
-   //
-   //       std::cout << x3 << ", " << y3 << std::endl;
-   //
-   //       if((std::abs(x3-x2)<1e-8)&&(std::abs(y3-y2)<1e-8)){
-   //         std::cerr << "Duplicate points!" << std::endl;
-   //         //throw std::runtime_error("Duplicate points.");
-   //
-   //       }else{
-   //         double triArea = 0.5*std::abs((x2*y1-x1*y2)+(x3*y2-x2*y3)+(x1*y3-x3*y1));
-   //
-   //         // std::cout << "     Triangle (" << x1 << "," << y1 << ")->(" << x2 << "," << y2 << ")->(" << x3 << "," << y3 << ")" << std::endl;
-   //         objParts(cellInd) += gridCellDens * (TriangleIntegral(x1,                  y1,
-   //                                                              x2,                  y2,
-   //                                                              x3,                  y3,
-   //                                                              discrPts(0,cellInd), discrPts(1,cellInd))
-   //                                              - triArea*prices(cellInd));
-   //
-   //         phiu += gridCellDens*triArea*prices(cellInd);
-   //
-   //         //                                                      x2,                  y2,
-   //         //                                                      x3,                  y3,
-   //         //                                                      discrPts(0,cellInd), discrPts(1,cellInd))
-   //         //                                      - triArea*prices(cellInd)) << std::endl;
-   //         // // gridCellDense * triArea, where triArea=0.5*std::abs((x2*y1-x1*y2)+(x3*y2-x2*y3)+(x1*y3-x3*y1))
-   //
-   //         interArea += gridCellDens*triArea;
-   //         unweightedArea += triArea;
-   //
-   //         gradient(cellInd) -= gridCellDens*triArea;
-   //       }
-   //     }
-   //
-   //   }else{
-   //     interArea += gridCellDens*grid->dx*grid->dy;
-   //     unweightedArea += grid->dx*grid->dy;
-   //
-   //     objParts(cellInd) += gridCellDens*(SquareIntegral(gridIter.Cell()->xMin,  gridIter.Cell()->xMax,
-   //                                                       gridIter.Cell()->yMin,  gridIter.Cell()->yMax,
-   //                                                       discrPts(0,cellInd), discrPts(1,cellInd))
-   //                          - prices(cellInd)*grid->dx*grid->dy);
-   //
-   //     phiu += gridCellDens*grid->dx*grid->dy*prices(cellInd);
-   //     // gridCellDens * rectArea, where rectArea = grid->dx*grid->dy
-   //     gradient(cellInd) -= gridCellDens*grid->dx*grid->dy;
-   //   }
-   //
-   //   lagCellArea += interArea;
-   //
-   //   gridIter.Increment();
-   // }
-
-   totalProb += weightedArea;
+   probs(cellInd) = weightedArea;
  }
 
+ double totalProb = probs.sum();
  if(std::abs(totalProb-1.0)>5e-7){
 
    std::cout << "Warning:  Total probability has an error of " << totalProb-1.0 << std::endl;
@@ -739,7 +634,7 @@ std::shared_ptr<LaguerreDiagram> SemidiscreteOT::BuildCentroidal(std::shared_ptr
   std::cout << "Computing constrained centroidal diagram." << std::endl;
   for(unsigned int i=0; i<maxIts; ++i){
     assert(ot);
-    ot->Solve(Eigen::VectorXd::Ones(numPts));
+    ot->Solve(Eigen::VectorXd::Ones(numPts), opts);
 
     newPts = ot->Diagram()->Centroids(dist);
     resid = (newPts - pts).cwiseAbs().maxCoeff();;

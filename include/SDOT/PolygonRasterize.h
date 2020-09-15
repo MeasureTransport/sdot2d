@@ -69,6 +69,13 @@ namespace sdot {
 
       std::shared_ptr<BoundingBox> const& Cell() const{return cellBox;};
 
+      double cellBoundTime = 0;
+      double edgeTime = 0;
+      double xIndTime = 0;
+      double interTime = 0;
+      unsigned int numInters = 0;
+      unsigned int numIncrs = 0;
+      
     private:
 
       const double compTol = 1e-14;

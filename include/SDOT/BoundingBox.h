@@ -27,6 +27,7 @@ namespace sdot {
     typedef CGAL::Polygon_2<K>            Polygon_2;
     typedef CGAL::Polygon_with_holes_2<K> Polygon_with_holes_2;
 
+    enum class Side { Left, Right, Bottom, Top };
 
     BoundingBox(double xmin_, double xmax_,
                 double ymin_, double ymax_);
@@ -37,7 +38,8 @@ namespace sdot {
     */
     bool ClipSegment(Point_2 &src, Point_2 &tgt) const;
 
-    /** Computes the intersection of a polygon with the bounding box.
+    /** Computes the intersection of a polygon with the bounding box.  Uses
+        an implementation of the Sutherland–Hodgman algorithm.
     */
     std::shared_ptr<Polygon_2> ClipPolygon(std::shared_ptr<Polygon_2> const& poly) const;
 
@@ -55,10 +57,10 @@ namespace sdot {
 
   private:
 
-    std::shared_ptr<Polygon_2> ClipRight(std::shared_ptr<Polygon_2> const& poly) const;
-    std::shared_ptr<Polygon_2> ClipLeft(std::shared_ptr<Polygon_2> const& poly) const;
-    std::shared_ptr<Polygon_2> ClipTop(std::shared_ptr<Polygon_2> const& poly) const;
-    std::shared_ptr<Polygon_2> ClipBottom(std::shared_ptr<Polygon_2> const& poly) const;
+    std::vector<Point_2> ClipRight(std::vector<Point_2> const& poly) const;
+    std::vector<Point_2> ClipLeft(std::shared_ptr<Polygon_2> const& poly) const;
+    std::vector<Point_2> ClipTop(std::vector<Point_2> const& poly) const;
+    std::vector<Point_2> ClipBottom(std::vector<Point_2> const& poly) const;
 
     Polygon_2 boxPoly;
     const double compTol = 1e-12;

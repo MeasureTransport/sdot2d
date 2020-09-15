@@ -14,6 +14,12 @@
 #include <CGAL/number_utils.h>
 #include <CGAL/Boolean_set_operations_2.h>
 
+#if defined(_OPENMP)
+#include <omp.h>
+#endif
+
+#include <stdio.h>
+
 using namespace sdot;
 
 LaguerreDiagram::LaguerreDiagram(double xBndLeftIn,   double xBndRightIn,
@@ -55,8 +61,14 @@ Eigen::Matrix2Xd LaguerreDiagram::GetCellVertices(int ind) const
 Eigen::VectorXd LaguerreDiagram::Areas(std::shared_ptr<Distribution2d> const& dist) const
 {
   Eigen::VectorXd areas(NumCells());
-  for(int i=0; i<areas.size();++i)
+
+  #if defined(_OPENMP)
+   #pragma omp parallel for
+  #endif
+  for(int i=0; i<areas.size();++i){
     areas(i) = CellArea(i, dist);
+  }
+
   return areas;
 }
 
@@ -234,14 +246,22 @@ double LaguerreDiagram::IntegrateOverCell(unsigned int                          
     num_incr++;
   }
 
-  auto end = std::chrono::steady_clock::now();
+  // auto end = std::chrono::steady_clock::now();
   // std::cout << "\nIntegration total time: " << std::chrono::duration<double>(end-start).count() << std::endl;
   // std::cout << "   Setup: " << setup_time << std::endl;
   // std::cout << "   Increment (total, avg): (" << incr_total << ", " << incr_total/num_incr << ")\n";
+  // std::cout << "       CellBound: " << gridIter.cellBoundTime << std::endl;
+  // std::cout << "       edgeTime: " << gridIter.edgeTime << std::endl;
+  // std::cout << "       xIndTime: " << gridIter.xIndTime << std::endl;
+  // std::cout << "       interTime: " << gridIter.interTime << std::endl;
+  // std::cout << "       numInters: " << gridIter.numInters << std::endl;
+  // std::cout << "       totalIncrs: " << gridIter.numIncrs << std::endl;
+  //
   // std::cout << "   Boundary (total, avg): (" << bndry_total << ", " << bndry_total/num_bndry << ")\n";
   // std::cout << "   Interior (total, avg): (" << int_total << ", " << int_total/num_int << ")\n";
   // std::cout << "   Other : " << std::chrono::duration<double>(end-start).count() - incr_total - bndry_total - int_total << std::endl;
   // std::cout << std::endl;
+
   return result;
 }
 
@@ -250,6 +270,9 @@ Eigen::Matrix2Xd LaguerreDiagram::Centroids(std::shared_ptr<Distribution2d> cons
 {
   Eigen::Matrix2Xd centroids(2,NumCells());
 
+  #if defined(_OPENMP)
+   #pragma omp parallel for
+  #endif
   for(int i=0; i<NumCells(); ++i){
     centroids.col(i) = CellCentroid(i, dist);
   }

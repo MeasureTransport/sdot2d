@@ -89,9 +89,10 @@ bool BoundingBox::ClipSegment(Point_2 &srcPt, Point_2 &tgtPt) const
 }
 
 
-std::shared_ptr<BoundingBox::Polygon_2> BoundingBox::ClipLeft(std::shared_ptr<BoundingBox::Polygon_2> const& poly) const
+std::vector<BoundingBox::Point_2> BoundingBox::ClipLeft(std::shared_ptr<BoundingBox::Polygon_2> const& poly) const
 {
-  std::shared_ptr<Polygon_2> newPoly = std::make_shared<Polygon_2>();
+  std::vector<Point_2> newPoly;
+  newPoly.reserve(poly->size()+1);
 
   for(auto edge = poly->edges_begin(); edge != poly->edges_end(); ++edge)
   {
@@ -100,14 +101,14 @@ std::shared_ptr<BoundingBox::Polygon_2> BoundingBox::ClipLeft(std::shared_ptr<Bo
 
       // If both points are inside...
       if(edge->target().x() >= xMin){
-        newPoly->push_back(edge->target());
+        newPoly.push_back(edge->target());
 
       // The source is inside with the target isn't
       }else{
 
         // Add the  intersection of the edge and this part of the bbox boundary
         double t = CGAL::to_double((xMin - edge->source().x())/(edge->target().x() - edge->source().x()));
-        newPoly->push_back(  Point_2(xMin, edge->source().y() + t*(edge->target().y() - edge->source().y())) );
+        newPoly.push_back(  Point_2(xMin, edge->source().y() + t*(edge->target().y() - edge->source().y())) );
       }
 
     }else{
@@ -117,8 +118,8 @@ std::shared_ptr<BoundingBox::Polygon_2> BoundingBox::ClipLeft(std::shared_ptr<Bo
 
         // Add the  intersection of the edge and this part of the bbox boundary
         double t = CGAL::to_double((xMin - edge->source().x())/(edge->target().x() - edge->source().x()));
-        newPoly->push_back(  Point_2(xMin, edge->source().y() + t*(edge->target().y() - edge->source().y())) );
-        newPoly->push_back(edge->target());
+        newPoly.push_back(  Point_2(xMin, edge->source().y() + t*(edge->target().y() - edge->source().y())) );
+        newPoly.push_back(edge->target());
 
       // Both points are outside... do nothing
       //}else{
@@ -130,36 +131,51 @@ std::shared_ptr<BoundingBox::Polygon_2> BoundingBox::ClipLeft(std::shared_ptr<Bo
   return newPoly;
 }
 
-std::shared_ptr<BoundingBox::Polygon_2> BoundingBox::ClipRight(std::shared_ptr<BoundingBox::Polygon_2> const& poly) const
+std::vector<BoundingBox::Point_2> BoundingBox::ClipRight(std::vector<BoundingBox::Point_2> const& oldPoly) const
 {
-  std::shared_ptr<Polygon_2> newPoly = std::make_shared<Polygon_2>();
 
-  for(auto edge = poly->edges_begin(); edge != poly->edges_end(); ++edge)
-  {
+  const unsigned int numVerts = oldPoly.size();
 
-    if(edge->source().x() <= xMax){
+  std::vector<Point_2> newPoly;
+  newPoly.reserve(numVerts+1);
+
+  const Point_2* source;
+  const Point_2* target;
+
+  // Loop over all but the last vertex
+  for(unsigned int  i=0; i<numVerts; ++i){
+
+    // Extract the source and target vertices
+    source = &oldPoly.at(i);
+    if(i==numVerts-1){
+      target = &oldPoly.at(0);
+    }else{
+      target = &oldPoly.at(i+1);
+    }
+
+    if(source->x() <= xMax){
 
       // If both points are inside...
-      if(edge->target().x() <= xMax){
-        newPoly->push_back(edge->target());
+      if(target->x() <= xMax){
+        newPoly.push_back(*target);
 
-      // The source is inside with the target isn't
+      // The source is inside but the target isn't
       }else{
 
         // Add the  intersection of the edge and this part of the bbox boundary
-        double t = CGAL::to_double((xMax - edge->source().x())/(edge->target().x() - edge->source().x()));
-        newPoly->push_back(  Point_2(xMax, edge->source().y() + t*(edge->target().y() - edge->source().y())) );
+        double t = CGAL::to_double((xMax - source->x())/(target->x() - source->x()));
+        newPoly.push_back(  Point_2(xMax, source->y() + t*(target->y() - source->y())) );
       }
 
     }else{
 
       // The source is outside but the target is inside
-      if(edge->target().x() <= xMax){
+      if(target->x() <= xMax){
 
         // Add the  intersection of the edge and this part of the bbox boundary
-        double t = CGAL::to_double((xMax - edge->source().x())/(edge->target().x() - edge->source().x()));
-        newPoly->push_back(  Point_2(xMax, edge->source().y() + t*(edge->target().y() - edge->source().y())) );
-        newPoly->push_back(edge->target());
+        double t = CGAL::to_double((xMax - source->x())/(target->x() - source->x()));
+        newPoly.push_back(  Point_2(xMax, source->y() + t*(target->y() - source->y())) );
+        newPoly.push_back(*target);
 
       // Both points are outside... do nothing
       //}else{
@@ -171,36 +187,50 @@ std::shared_ptr<BoundingBox::Polygon_2> BoundingBox::ClipRight(std::shared_ptr<B
   return newPoly;
 }
 
-std::shared_ptr<BoundingBox::Polygon_2> BoundingBox::ClipTop(std::shared_ptr<BoundingBox::Polygon_2> const& poly) const
+std::vector<BoundingBox::Point_2> BoundingBox::ClipTop(std::vector<BoundingBox::Point_2> const& oldPoly) const
 {
-  std::shared_ptr<Polygon_2> newPoly = std::make_shared<Polygon_2>();
+  const unsigned int numVerts = oldPoly.size();
 
-  for(auto edge = poly->edges_begin(); edge != poly->edges_end(); ++edge)
-  {
+  std::vector<Point_2> newPoly;
+  newPoly.reserve(numVerts+1);
 
-    if(edge->source().y() <= yMax){
+  const Point_2* source;
+  const Point_2* target;
+
+  // Loop over all but the last vertex
+  for(unsigned int  i=0; i<numVerts; ++i){
+
+    // Extract the source and target vertices
+    source = &oldPoly.at(i);
+    if(i==numVerts-1){
+      target = &oldPoly.at(0);
+    }else{
+      target = &oldPoly.at(i+1);
+    }
+
+    if(source->y() <= yMax){
 
       // If both points are inside...
-      if(edge->target().y() <= yMax){
-        newPoly->push_back(edge->target());
+      if(target->y() <= yMax){
+        newPoly.push_back(*target);
 
-      // The source is inside with the target isn't
+      // The source is inside but the target isn't
       }else{
 
         // Add the  intersection of the edge and this part of the bbox boundary
-        double t = CGAL::to_double((yMax - edge->source().y())/(edge->target().y() - edge->source().y()));
-        newPoly->push_back(  Point_2(edge->source().x() + t*(edge->target().x() - edge->source().x()), yMax) );
+        double t = CGAL::to_double((yMax - source->y())/(target->y() - source->y()));
+        newPoly.push_back(  Point_2(source->x() + t*(target->x() - source->x()), yMax) );
       }
 
     }else{
 
       // The source is outside but the target is inside
-      if(edge->target().y() <= yMax){
+      if(target->y() <= yMax){
 
         // Add the  intersection of the edge and this part of the bbox boundary
-        double t = CGAL::to_double((yMax - edge->source().y())/(edge->target().y() - edge->source().y()));
-        newPoly->push_back(  Point_2(edge->source().x() + t*(edge->target().x() - edge->source().x()), yMax) );
-        newPoly->push_back(edge->target());
+        double t = CGAL::to_double((yMax - source->y())/(target->y() - source->y()));
+        newPoly.push_back(  Point_2(source->x() + t*(target->x() - source->x()), yMax) );
+        newPoly.push_back(*target);
 
       // Both points are outside... do nothing
       //}else{
@@ -212,36 +242,46 @@ std::shared_ptr<BoundingBox::Polygon_2> BoundingBox::ClipTop(std::shared_ptr<Bou
   return newPoly;
 }
 
-std::shared_ptr<BoundingBox::Polygon_2> BoundingBox::ClipBottom(std::shared_ptr<BoundingBox::Polygon_2> const& poly) const
+std::vector<BoundingBox::Point_2> BoundingBox::ClipBottom(std::vector<BoundingBox::Point_2> const& oldPoly) const
 {
-  std::shared_ptr<Polygon_2> newPoly = std::make_shared<Polygon_2>();
+  const unsigned int numVerts = oldPoly.size();
 
-  for(auto edge = poly->edges_begin(); edge != poly->edges_end(); ++edge)
-  {
+  std::vector<Point_2> newPoly;
+  newPoly.reserve(numVerts+1);
 
-    if(edge->source().y() >= yMin){
+  const Point_2* source;
+  const Point_2* target;
+
+  // Loop over all but the last vertex
+  for(unsigned int  i=0; i<numVerts; ++i){
+
+    // Extract the source and target vertices
+    source = &oldPoly.at(i);
+    target = &oldPoly.at((i+1)%numVerts);
+
+    if(source->y() >= yMin){
 
       // If both points are inside...
-      if(edge->target().y() >= yMin){
-        newPoly->push_back(edge->target());
+      if(target->y() >= yMin){
+        newPoly.push_back(*target);
 
-      // The source is inside with the target isn't
+      // The source is inside but the target isn't
       }else{
 
         // Add the  intersection of the edge and this part of the bbox boundary
-        double t = CGAL::to_double((yMin - edge->source().y())/(edge->target().y() - edge->source().y()));
-        newPoly->push_back(  Point_2(edge->source().x() + t*(edge->target().x() - edge->source().x()), yMin) );
+        double t = CGAL::to_double((yMin - source->y())/(target->y() - source->y()));
+        newPoly.push_back(  Point_2(source->x() + t*(target->x() - source->x()), yMin));
       }
 
     }else{
 
       // The source is outside but the target is inside
-      if(edge->target().y() >= yMin){
+      if(target->y() >= yMin){
 
         // Add the  intersection of the edge and this part of the bbox boundary
-        double t = CGAL::to_double((yMin - edge->source().y())/(edge->target().y() - edge->source().y()));
-        newPoly->push_back(  Point_2(edge->source().x() + t*(edge->target().x() - edge->source().x()), yMin) );
-        newPoly->push_back(edge->target());
+        double t = CGAL::to_double((yMin - source->y())/(target->y() - source->y()));
+        newPoly.push_back(  Point_2(source->x() + t*(target->x() - source->x()), yMin));
+        newPoly.push_back(*target);
 
       // Both points are outside... do nothing
       //}else{
@@ -256,7 +296,8 @@ std::shared_ptr<BoundingBox::Polygon_2> BoundingBox::ClipBottom(std::shared_ptr<
 std::shared_ptr<BoundingBox::Polygon_2> BoundingBox::ClipPolygon(std::shared_ptr<BoundingBox::Polygon_2> const& poly) const
 {
 
-  return ClipBottom( ClipTop( ClipRight( ClipLeft(poly) ) ) );
+  std::vector<Point_2> verts = ClipBottom( ClipTop( ClipRight( ClipLeft(poly) ) ) );
+  return std::make_shared<Polygon_2>(verts.begin(), verts.end());
 
   // std::vector<Polygon_with_holes_2> temp;
   // temp.reserve(2*poly->size());

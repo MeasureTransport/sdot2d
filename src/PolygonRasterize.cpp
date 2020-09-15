@@ -1,6 +1,7 @@
 #include "SDOT/PolygonRasterize.h"
 
 #include <CGAL/Boolean_set_operations_2.h>
+#include <chrono>
 
 using namespace sdot;
 
@@ -652,13 +653,19 @@ std::shared_ptr<PolygonRasterizeIter::Polygon_2> PolygonRasterizeIter::BoundaryI
 PolygonRasterizeIter& PolygonRasterizeIter::Increment()
 {
   indices.first++;
+  auto start = std::chrono::steady_clock::now();
   UpdateCellBounds();
+  auto end = std::chrono::steady_clock::now();
+  cellBoundTime += std::chrono::duration<double>(end-start).count();
 
   if(indices.first>xInd_end){
 
     // Increment the yInd and find the new x values
+    start = std::chrono::steady_clock::now();
     unsigned int yInd = indices.second+1;
     UpdateEdges(yInd);
+    end = std::chrono::steady_clock::now();
+    edgeTime += std::chrono::duration<double>(end-start).count();
 
     double y = grid->yMin + grid->dy*yInd;
 
@@ -676,8 +683,11 @@ PolygonRasterizeIter& PolygonRasterizeIter::Increment()
       }
     }
 
+    start = std::chrono::steady_clock::now();
     unsigned int xInd_begin;
     std::tie(xInd_begin, maxLeftIndBC, minRightIndBC, xInd_end) = GetXInds(y);
+    end = std::chrono::steady_clock::now();
+    xIndTime += std::chrono::duration<double>(end-start).count();
 
     if(xInd_end<xInd_begin){
       isValid=false;
@@ -686,14 +696,22 @@ PolygonRasterizeIter& PolygonRasterizeIter::Increment()
 
     indices = std::make_pair(xInd_begin, yInd);
 
+    start = std::chrono::steady_clock::now();
     UpdateCellBounds();
+    end = std::chrono::steady_clock::now();
+    cellBoundTime += std::chrono::duration<double>(end-start).count();
   }
 
   if((indices.first<=maxLeftIndBC)||(indices.first>=minRightIndBC)){
+    start = std::chrono::steady_clock::now();
     overlapPoly = BoundaryIntersection();
+    end = std::chrono::steady_clock::now();
+    interTime += std::chrono::duration<double>(end-start).count();
+    numInters++;
   }else{
     overlapPoly = nullptr;
   }
+  numIncrs++;
 
   return *this;
 };
