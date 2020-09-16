@@ -101,7 +101,7 @@ unsigned int RegularGrid::TopNode(double y) const
   }else if(distToNode<compTol){
     return std::round(indDouble);
   }else{
-    return std::ceil((y-xMin)/dy);
+    return std::ceil((y-yMin)/dy);
   }
 }
 
@@ -130,6 +130,6 @@ unsigned int RegularGrid::BottomNode(double y) const
   }else if(distToNode<compTol){
     return std::round(indDouble);
   }else{
-    return std::floor((y-xMin)/dy);
+    return std::floor((y-yMin)/dy);
   }
 }
