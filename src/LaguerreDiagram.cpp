@@ -224,7 +224,7 @@ double LaguerreDiagram::IntegrateOverCell(unsigned int                          
         pt1[0] = grid->xMin + grid->dx*xInd;
         pt1[1] = grid->yMin + grid->dy*yInd;
         pt2[0] = grid->xMin + grid->dx*(xInd+1);
-        pt2[1] = grid->xMin + grid->dy*(yInd+1);
+        pt2[1] = grid->yMin + grid->dy*(yInd+1);
 
         interResult += integrand->RectangularIntegral(pt1,pt2);
 
