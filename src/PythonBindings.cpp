@@ -7,7 +7,7 @@
 #include "SDOT/RegularGrid.h"
 #include "SDOT/Distribution2d.h"
 #include "SDOT/DiscretizedDistribution.h"
-#include "SDOT/SemidiscreteOT.h"
+#include "SDOT/SemiDiscreteOT.h"
 
 namespace py = pybind11;
 using namespace sdot;

@@ -1,4 +1,4 @@
-#include "SDOT/SemidiscreteOT.h"
+#include "SDOT/SemiDiscreteOT.h"
 
 #include "SDOT/Integrands/ConstantIntegrand.h"
 #include "SDOT/Integrands/TransportIntegrand.h"

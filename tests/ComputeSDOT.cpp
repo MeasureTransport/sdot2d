@@ -6,7 +6,7 @@
 #include <vector>
 #include <memory>
 
-#include "SDOT/SemidiscreteOT.h"
+#include "SDOT/SemiDiscreteOT.h"
 #include "SDOT/PolygonRasterize.h"
 #include "SDOT/RegularGrid.h"
 #include "SDOT/DiscretizedDistribution.h"
