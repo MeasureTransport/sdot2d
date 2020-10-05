@@ -73,8 +73,8 @@ Eigen::Matrix2Xd SemidiscreteOT::PointGradient() const
 Eigen::Matrix2Xd SemidiscreteOT::PointGradient(LaguerreDiagram const& lagDiag) const
 {
   Eigen::Matrix2Xd seeds = lagDiag.SeedPts();
-  Eigen::VectorXd areas = lagDiag.Areas();
-  Eigen::Matrix2Xd centroids = lagDiag.Centroids();
+  Eigen::VectorXd areas = lagDiag.Areas(dist);
+  Eigen::Matrix2Xd centroids = lagDiag.Centroids(dist);
 
   return (seeds-centroids)*areas.asDiagonal();
 }
