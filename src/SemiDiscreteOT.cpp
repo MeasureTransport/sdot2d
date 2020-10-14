@@ -1,5 +1,8 @@
 #include "SDOT/SemiDiscreteOT.h"
 
+
+#include "SDOT/Assert.h"
+
 #include "SDOT/Integrands/ConstantIntegrand.h"
 #include "SDOT/Integrands/TransportIntegrand.h"
 
@@ -18,26 +21,27 @@ SemidiscreteOT::SemidiscreteOT(std::shared_ptr<Distribution2d> const& distIn,
                                                                                       discrPts(discrPtsIn),
                                                                                       discrProbs(discrProbsIn)
 {
-  assert(discrPtsIn.cols()==discrProbsIn.size());
+  if(discrPtsIn.cols()!=discrProbsIn.size())
+  SDOT_ASSERT(discrPtsIn.cols()==discrProbsIn.size());
 
   // Check to make sure all the points are inside the grid domain
   for(unsigned int i=0; i<discrPts.cols(); ++i){
-    assert(discrPts(0,i)>=grid->xMin);
-    assert(discrPts(0,i)<=grid->xMax);
-    assert(discrPts(1,i)>=grid->yMin);
-    assert(discrPts(1,i)<=grid->yMax);
+    SDOT_ASSERT(discrPts(0,i)>=grid->xMin);
+    SDOT_ASSERT(discrPts(0,i)<=grid->xMax);
+    SDOT_ASSERT(discrPts(1,i)>=grid->yMin);
+    SDOT_ASSERT(discrPts(1,i)<=grid->yMax);
   }
 }
 
 void SemidiscreteOT::SetPoints(Eigen::Matrix2Xd const& newPts){
-  assert(newPts.cols()==discrProbs.size());
+  SDOT_ASSERT(newPts.cols()==discrProbs.size());
 
   // Check to make sure all the points are inside the grid domain
   for(unsigned int i=0; i<newPts.cols(); ++i){
-    assert(newPts(0,i)>=grid->xMin);
-    assert(newPts(0,i)<=grid->xMax);
-    assert(newPts(1,i)>=grid->yMin);
-    assert(newPts(1,i)<=grid->yMax);
+    SDOT_ASSERT(newPts(0,i)>=grid->xMin);
+    SDOT_ASSERT(newPts(0,i)<=grid->xMax);
+    SDOT_ASSERT(newPts(1,i)>=grid->yMin);
+    SDOT_ASSERT(newPts(1,i)<=grid->yMax);
   }
 
   discrPts = newPts;
@@ -50,7 +54,7 @@ std::tuple<double,Eigen::VectorXd, Eigen::SparseMatrix<double>> SemidiscreteOT::
     //   - See (17) of https://arxiv.org/pdf/1710.02634.pdf
 
     const int numCells = discrPts.cols();
-    assert(numCells==prices.size());
+    SDOT_ASSERT(numCells==prices.size());
 
     // Construct the Laguerre diagram
     LaguerreDiagram lagDiag(grid->xMin, grid->xMax, grid->yMin, grid->yMax, discrPts, prices);
@@ -126,7 +130,7 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT::ComputeGradient(Eigen::VectorX
    // }
    throw std::runtime_error("Error in total probability.");
 
-   //assert(std::abs(weightedArea-1.0)<1e-10);
+   //SDOT_ASSERT(std::abs(weightedArea-1.0)<1e-10);
  }
 
 
@@ -362,7 +366,7 @@ Eigen::SparseMatrix<double> SemidiscreteOT::ComputeHessian(LaguerreDiagram const
 std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd                  const& prices0,
                                                          OptionList                              options)
 {
-  assert(prices0.size()==discrPts.cols());
+  SDOT_ASSERT(prices0.size()==discrPts.cols());
   const unsigned int dim = prices0.size();
 
   unsigned int printLevel = GetOpt("Print Level", options, 3);
@@ -383,10 +387,12 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd        
   const double maxRadius = GetOpt("Max Radius", options, 10);
 
 
-
+  std::cout << "  Here a" << std::endl;
   double fval, newF, gradNorm, newGradNorm;
   Eigen::VectorXd grad, newGrad;
   Eigen::SparseMatrix<double> hess;
+
+  std::cout << "  Here aa" << std::endl;
 
   Eigen::VectorXd x = prices0;
   Eigen::VectorXd newX(x);
@@ -394,12 +400,21 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd        
 
   std::shared_ptr<LaguerreDiagram> newLagDiag;
 
+  std::cout << "  Here aaa" << std::endl;
+
   // Compute an initial gradient and Hessian
+  std::cout << grid->xMin << ", " << grid->xMax << ", " << grid->yMin << ", " << grid->yMax << std::endl;
+  std::cout << "discrPts:\n" << discrPts << std::endl;
+  std::cout << "x:\n" << x << std::endl;
+
   lagDiag  = std::make_shared<LaguerreDiagram>(grid->xMin, grid->xMax, grid->yMin, grid->yMax, discrPts, x);
-  assert(lagDiag!=nullptr);
+  SDOT_ASSERT(lagDiag!=nullptr);
+
+  std::cout << "  Here b" << std::endl;
 
   std::tie(fval, grad) = ComputeGradient(x, *lagDiag);
 
+  std::cout << "  Here c" << std::endl;
   fval *= -1.0;
   grad *= -1.0;
   gradNorm = grad.norm();
@@ -622,7 +637,7 @@ std::shared_ptr<LaguerreDiagram> SemidiscreteOT::BuildCentroidal(std::shared_ptr
   double tol = GetOpt("Lloyd Tol", opts, 1e-3);
 
   const unsigned int numPts = pointProbs.size();
-  assert(numPts==initialPoints.cols());
+  SDOT_ASSERT(numPts==initialPoints.cols());
 
   double resid = tol + 1.0;
 
@@ -633,7 +648,7 @@ std::shared_ptr<LaguerreDiagram> SemidiscreteOT::BuildCentroidal(std::shared_ptr
 
   std::cout << "Computing constrained centroidal diagram." << std::endl;
   for(unsigned int i=0; i<maxIts; ++i){
-    assert(ot);
+    SDOT_ASSERT(ot);
     ot->Solve(Eigen::VectorXd::Ones(numPts), opts);
 
     newPts = ot->Diagram()->Centroids(dist);
