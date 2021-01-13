@@ -207,7 +207,7 @@ private:
   void CreateUnboundedDiagram(Eigen::Matrix2Xd const& pts,
                               Eigen::VectorXd  const& costs);
 
-  void CreateBoundedCells(Eigen::Matrix2Xd const& pts);
+  void CreateBoundedCells();
 
   /** This function clips a polygon to the halfspace defined by the Laguerre diagram face handle.
       This sdefines one part of the Sutherland-Hodgman algorthm used here to bound
@@ -240,6 +240,8 @@ private:
 
   /// The number of points used to construct the Laguere diagram.
   int numPts;
+
+  Eigen::Matrix2Xd seedPts;
 
   /// A vector of bounded Laguerre cells.  These defines bounded diagram.
   std::vector<std::shared_ptr<Polygon_2>> laguerreCells;

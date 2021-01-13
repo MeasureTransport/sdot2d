@@ -90,8 +90,8 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT::ComputeGradient(Eigen::VectorX
  const int numCells = prices.size();
 
  // Holds the part of the objective for each cell in the Laguerre diagram
- Eigen::VectorXd objParts(numCells);
- Eigen::VectorXd gradient(numCells);
+ Eigen::VectorXd objParts = Eigen::VectorXd::Zero(numCells);
+ Eigen::VectorXd gradient = Eigen::VectorXd::Zero(numCells);
 
  Eigen::VectorXd probs(numCells);
 
@@ -387,12 +387,9 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd        
   const double maxRadius = GetOpt("Max Radius", options, 10);
 
 
-  std::cout << "  Here a" << std::endl;
   double fval, newF, gradNorm, newGradNorm;
   Eigen::VectorXd grad, newGrad;
   Eigen::SparseMatrix<double> hess;
-
-  std::cout << "  Here aa" << std::endl;
 
   Eigen::VectorXd x = prices0;
   Eigen::VectorXd newX(x);
@@ -400,21 +397,12 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd        
 
   std::shared_ptr<LaguerreDiagram> newLagDiag;
 
-  std::cout << "  Here aaa" << std::endl;
-
   // Compute an initial gradient and Hessian
-  std::cout << grid->xMin << ", " << grid->xMax << ", " << grid->yMin << ", " << grid->yMax << std::endl;
-  std::cout << "discrPts:\n" << discrPts << std::endl;
-  std::cout << "x:\n" << x << std::endl;
-
   lagDiag  = std::make_shared<LaguerreDiagram>(grid->xMin, grid->xMax, grid->yMin, grid->yMax, discrPts, x);
   SDOT_ASSERT(lagDiag!=nullptr);
 
-  std::cout << "  Here b" << std::endl;
-
   std::tie(fval, grad) = ComputeGradient(x, *lagDiag);
 
-  std::cout << "  Here c" << std::endl;
   fval *= -1.0;
   grad *= -1.0;
   gradNorm = grad.norm();
@@ -458,91 +446,91 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd        
     }
 
     // Try constructing the new Laguerre diagram.  If we can't then shrink the trust region size
-    try{
+    // try{
+    start = std::chrono::steady_clock::now();
+    newLagDiag  = std::make_shared<LaguerreDiagram>(grid->xMin, grid->xMax, grid->yMin, grid->yMax, discrPts, newX);
+    end = std::chrono::steady_clock::now();
+    std::chrono::duration<double> lag_time = end-start;
 
-      start = std::chrono::steady_clock::now();
-      newLagDiag  = std::make_shared<LaguerreDiagram>(grid->xMin, grid->xMax, grid->yMin, grid->yMax, discrPts, newX);
-      end = std::chrono::steady_clock::now();
-      std::chrono::duration<double> lag_time = end-start;
+    start = std::chrono::steady_clock::now();
+    std::tie(newF, newGrad) = ComputeGradient(newX, *newLagDiag);
+    end = std::chrono::steady_clock::now();
+    std::chrono::duration<double> grad_time = end-start;
 
-      start = std::chrono::steady_clock::now();
-      std::tie(newF, newGrad) = ComputeGradient(newX, *newLagDiag);
-      end = std::chrono::steady_clock::now();
-      std::chrono::duration<double> grad_time = end-start;
-
-      // std::cout << "Times:" << std::endl;
-      // std::cout << "    Hessian: "  << hess_time.count()  << std::endl;
-      // std::cout << "    Subproblem: " << sub_time.count()  << std::endl;
-      // std::cout << "    Laguerre Construction: " << lag_time.count()  << std::endl;
-      // std::cout << "    Gradient: " << grad_time.count()  << std::endl;
+    // std::cout << "Times:" << std::endl;
+    // std::cout << "    Hessian: "  << hess_time.count()  << std::endl;
+    // std::cout << "    Subproblem: " << sub_time.count()  << std::endl;
+    // std::cout << "    Laguerre Construction: " << lag_time.count()  << std::endl;
+    // std::cout << "    Gradient: " << grad_time.count()  << std::endl;
 
 
-      newF *= -1.0;
-      newGrad *= -1.0;
+    newF *= -1.0;
+    newGrad *= -1.0;
 
-      newGradNorm = newGrad.norm();
+    newGradNorm = newGrad.norm();
 
-      // Use the quadratic submodel to predict the change in the gradient norm
-      double modDelta = gradNorm - (grad + hess.selfadjointView<Eigen::Lower>()*step).norm();
-      double trueDelta = gradNorm - newGradNorm;
+    // Use the quadratic submodel to predict the change in the gradient norm
+    double modDelta = gradNorm - (grad + hess.selfadjointView<Eigen::Lower>()*step).norm();
+    double trueDelta = gradNorm - newGradNorm;
 
-      double rho = trueDelta/modDelta;
-      // std::cout << "          step.dot(grad) = " << step.dot(grad) << std::endl;
-      // std::cout << "          delta f = " << trueDelta << std::endl;
-      // std::cout << "          modDelta = " << modDelta << std::endl;
-      // std::cout << "          New prices = " << newX.transpose() << std::endl;
-      // std::cout << "          rho = " << rho << std::endl;
+    double rho = trueDelta/modDelta;
+    // std::cout << "          step.dot(grad) = " << step.dot(grad) << std::endl;
+    // std::cout << "          delta f = " << trueDelta << std::endl;
+    // std::cout << "          modDelta = " << modDelta << std::endl;
+    // std::cout << "          New prices = " << newX.transpose() << std::endl;
+    // std::cout << "          rho = " << rho << std::endl;
 
-      double stepNorm = step.norm();
-      if(stepNorm < xtol_abs){
+    double stepNorm = step.norm();
+    if(stepNorm < xtol_abs){
+      if(printLevel>0){
+        std::printf("Terminating because stepsize (%4.2e) is smaller than xtol_abs (%4.2e).\n", stepNorm, xtol_abs);
+      }
+      return std::make_pair(newX,newF);
+    }
+
+    // Update the position.  If the model is really bad, we'll just stay put
+    if(rho>acceptRatio){
+
+      if(std::abs(fval-newF)<ftol_abs){
         if(printLevel>0){
-          std::printf("Terminating because stepsize (%4.2e) is smaller than xtol_abs (%4.2e).\n", stepNorm, xtol_abs);
+          std::printf("Terminating because change in objective (%4.2e) is smaller than ftol_abs (%4.2e).\n", fval-newF, ftol_abs);
         }
         return std::make_pair(newX,newF);
       }
 
-      // Update the position.  If the model is really bad, we'll just stay put
-      if(rho>acceptRatio){
-
-        if(std::abs(fval-newF)<ftol_abs){
-          if(printLevel>0){
-            std::printf("Terminating because change in objective (%4.2e) is smaller than ftol_abs (%4.2e).\n", fval-newF, ftol_abs);
-          }
-          return std::make_pair(newX,newF);
-        }
-
-        x = newX;
-        fval = newF;
-        lagDiag = newLagDiag;
-        grad = newGrad;
-        gradNorm = newGradNorm;
-      }
-
-      // Update the trust region size
-      if(rho<shrinkRatio){
-        trustRadius = shrinkRate*trustRadius; // shrink trust region
-
-        if(printLevel>1)
-          std::cout << "            Shrinking trust region because of submodel accuracy." << std::endl;
-
-      }else if((rho>growRatio)&&(std::abs(step.norm()-trustRadius)<1e-10)) {
-        trustRadius = std::min(growRate*trustRadius, maxRadius);
-
-        if(printLevel>1)
-          std::cout << "            Growing trust region." << std::endl;
-
-      }
-
-    }catch(LaguerreDiagram::ConstructionException& e){
-      trustRadius = shrinkRate*trustRadius;
-      if(printLevel>1)
-        std::cout << "            Shrinking trust region because of degenerate Laguerre diagram." << std::endl;
+      x = newX;
+      fval = newF;
+      lagDiag = newLagDiag;
+      grad = newGrad;
+      gradNorm = newGradNorm;
     }
+
+    // Update the trust region size
+    if(rho<shrinkRatio){
+      trustRadius = shrinkRate*trustRadius; // shrink trust region
+
+      if(printLevel>1)
+        std::cout << "            Shrinking trust region because of submodel accuracy." << std::endl;
+
+    }else if((rho>growRatio)&&(std::abs(step.norm()-trustRadius)<1e-10)) {
+      trustRadius = std::min(growRate*trustRadius, maxRadius);
+
+      if(printLevel>1)
+        std::cout << "            Growing trust region." << std::endl;
+
+    }
+
+    // }catch(LaguerreDiagram::ConstructionException& e){
+    //   trustRadius = shrinkRate*trustRadius;
+    //   if(printLevel>1)
+    //     std::cout << "            Shrinking trust region because of degenerate Laguerre diagram." << std::endl;
+    // }
   }
 
   if(printLevel>0){
     std::printf("Terminating because maximum number of iterations (%d) was reached.", maxEvals);
   }
+
   return std::make_pair(x,fval);
 }
 
@@ -649,10 +637,11 @@ std::shared_ptr<LaguerreDiagram> SemidiscreteOT::BuildCentroidal(std::shared_ptr
   std::cout << "Computing constrained centroidal diagram." << std::endl;
   for(unsigned int i=0; i<maxIts; ++i){
     SDOT_ASSERT(ot);
-    ot->Solve(Eigen::VectorXd::Ones(numPts), opts);
 
+    ot->Solve(Eigen::VectorXd::Ones(numPts), opts);
     newPts = ot->Diagram()->Centroids(dist);
     resid = (newPts - pts).cwiseAbs().maxCoeff();;
+
     if(resid<tol){
       std::cout << "Converged with a final step of " << resid << std::endl;
       return ot->Diagram();

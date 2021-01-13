@@ -26,13 +26,14 @@ LaguerreDiagram::LaguerreDiagram(double xBndLeftIn,   double xBndRightIn,
                                  double yBndBottomIn, double yBndTopIn,
                                  Eigen::Matrix2Xd const& pts,
                                  Eigen::VectorXd  const& costs) : bbox(xBndLeftIn, xBndRightIn, yBndBottomIn, yBndTopIn),
-                                                                  infDist(2.0*std::sqrt(std::pow(xBndRightIn-xBndLeftIn,2.0) + std::pow(yBndTopIn-yBndBottomIn,2.0)))
+                                                                  infDist(2.0*std::sqrt(std::pow(xBndRightIn-xBndLeftIn,2.0) + std::pow(yBndTopIn-yBndBottomIn,2.0))),
+                                                                  seedPts(pts)
 {
   numPts = pts.cols();
   assert(costs.size()==numPts);
 
   CreateUnboundedDiagram(pts,costs);
-  CreateBoundedCells(pts);
+  CreateBoundedCells();
 }
 
 
@@ -46,6 +47,8 @@ LaguerreDiagram::LaguerreDiagram(BoundingBox const& bbox,
 Eigen::Matrix2Xd LaguerreDiagram::GetCellVertices(int ind) const
 {
   auto& poly = laguerreCells.at(ind);
+  assert(poly != nullptr);
+
   Eigen::Matrix2Xd points(2,poly->size());
 
   // Copy the vertices from the polygon to the Eigen::Matrix
@@ -114,6 +117,10 @@ double LaguerreDiagram::IntegrateOverCell(unsigned int                      cell
 {
   Eigen::Vector2d pt1(2), pt2(2), pt3(2);
 
+  if(laguerreCells.at(cellInd)==nullptr){
+    return 0;
+  }
+
   auto beginVert = laguerreCells.at(cellInd)->vertices_begin();
   auto vert1 = beginVert;
   vert1++;
@@ -155,6 +162,8 @@ double LaguerreDiagram::IntegrateOverCell(unsigned int                          
   double result = 0.0;
 
   // Loop over the grid cells in this Laguerre cell
+  if(laguerreCells.at(cellInd)==nullptr)
+    return 0.0;
   if(laguerreCells.at(cellInd)->size()==0)
     return 0.0;
 
@@ -268,12 +277,12 @@ double LaguerreDiagram::IntegrateOverCell(unsigned int                          
 
 Eigen::Matrix2Xd LaguerreDiagram::Centroids(std::shared_ptr<Distribution2d> const& dist) const
 {
-  Eigen::Matrix2Xd centroids(2,NumCells());
+  Eigen::Matrix2Xd centroids(2,seedPts.cols());
 
   #if defined(_OPENMP)
    #pragma omp parallel for
   #endif
-  for(int i=0; i<NumCells(); ++i){
+  for(int i=0; i<seedPts.cols(); ++i){
     centroids.col(i) = CellCentroid(i, dist);
   }
 
@@ -300,6 +309,10 @@ Eigen::Matrix2Xd LaguerreDiagram::SeedPts() const
 Eigen::Vector2d LaguerreDiagram::CellCentroid(unsigned int cellInd) const
 {
   double x1, x2, y1, y2, x3, y3;
+
+  if(laguerreCells.at(cellInd)==nullptr){
+    return seedPts.col(cellInd);
+  }
 
   auto beginVert = laguerreCells.at(cellInd)->vertices_begin();
   auto vert1 = beginVert;
@@ -341,7 +354,6 @@ std::shared_ptr<LaguerreDiagram> LaguerreDiagram::BuildCentroidal(BoundingBox   
                                                                   std::shared_ptr<Distribution2d> const& dist)
 {
   assert(prices.size()==initialPts.cols());
-
   double resid;
 
   Eigen::Matrix2Xd currPts;
@@ -420,6 +432,9 @@ Eigen::Vector2d LaguerreDiagram::CellCentroid(unsigned int cellInd, std::shared_
   if(dist==nullptr)
     return CellCentroid(cellInd);
 
+  if(laguerreCells.at(cellInd)==nullptr)
+    return seedPts.col(cellInd);
+
   auto& grid = dist->Grid();
 
   Eigen::Vector2d centroid = Eigen::Vector2d::Zero(2);
@@ -495,6 +510,7 @@ void LaguerreDiagram::CreateUnboundedDiagram(Eigen::Matrix2Xd const& pts,
                                              Eigen::VectorXd  const& costs)
 {
   assert(costs.size()==numPts);
+  unboundedDiagram.clear();
 
   //std::vector<Site_2> wpoints(numPts);
   for(unsigned int i=0; i<numPts; ++i){
@@ -672,38 +688,41 @@ std::shared_ptr<LaguerreDiagram::Polygon_2> LaguerreDiagram::BoundOneCell(PowerD
      //   std::cout << "    (" << it->source().x() << "," << it->source().y() << "), (" << it->target().x() << "," << it->target().y() << ")" << std::endl;
      // }
      if(poly->size()<3){
-       std::stringstream msg;
-       msg << "\nCould not construct Laguerre diagram. Found empty Laguerre cell.\n";
-       msg << "  Laguerre cell vertices:\n";
-
-       for(auto it = poly->vertices_begin(); it!=poly->vertices_end(); ++it)
-         msg << "    (" <<it->x() << "," << it->y() << ")\n";
-       msg << "\n";
-       throw LaguerreDiagram::ConstructionException(msg.str());
+       return nullptr;
+       // std::stringstream msg;
+       // msg << "\nCould not construct Laguerre diagram. Found empty Laguerre cell.\n";
+       // msg << "  Laguerre cell vertices:\n";
+       //
+       // for(auto it = poly->vertices_begin(); it!=poly->vertices_end(); ++it)
+       //   msg << "    (" <<it->x() << "," << it->y() << ")\n";
+       // msg << "\n";
+       // throw LaguerreDiagram::ConstructionException(msg.str());
+     }else{
+       return poly;
      }
-
-     return poly;
 }
 
 
-void LaguerreDiagram::CreateBoundedCells(Eigen::Matrix2Xd const& pts)
+void LaguerreDiagram::CreateBoundedCells()
 {
   internalEdges.clear();
   internalEdges.resize(numPts);
 
-  // Figure out which faces correspond to the original points
-  std::vector<Face_handle> faces(numPts);
-  unsigned int faceCount = 0;
-  for(auto faceIter = unboundedDiagram.faces_begin(); faceIter!=unboundedDiagram.faces_end(); ++faceIter){
-    faces.at(faceIter->dual()->info()) = *faceIter;
-    faceCount++;
-  }
-  if(faceCount!=numPts){
-    std::stringstream msg;
-    msg << "Could not construct Laguerre diagram. ";
-    msg << "There should be " << numPts << " faces, but only " << faceCount << " faces exist in the Laguerre diagram.";
-    throw LaguerreDiagram::ConstructionException(msg.str());
-  }
+  // // Figure out which faces correspond to the original points
+  // std::vector<Face_handle> faces(numPts);
+  // unsigned int faceCount = 0;
+  // for(auto faceIter = unboundedDiagram.faces_begin(); faceIter!=unboundedDiagram.faces_end(); ++faceIter){
+  //   faces.at(faceIter->dual()->info()) = *faceIter;
+  //   faceCount++;
+  // }
+  // if(faceCount!=numPts){
+  //   std::stringstream msg;
+  //   msg << "Could not construct Laguerre diagram. ";
+  //   msg << "There should be " << numPts << " faces, but only " << faceCount << " faces exist in the Laguerre diagram.";
+  //   std::cout << "pts:\n" << pts << std::endl;
+  //
+  //   throw LaguerreDiagram::ConstructionException(msg.str());
+  // }
 
   // for(auto& face : faces){
   //
@@ -720,11 +739,14 @@ void LaguerreDiagram::CreateBoundedCells(Eigen::Matrix2Xd const& pts)
   //   } while ( ++ec != ec_start );
   //
   // }
-  for(auto& face : faces){
+  laguerreCells.clear();
+  laguerreCells.resize(numPts, nullptr);
+
+  for(auto faceIter = unboundedDiagram.faces_begin(); faceIter!=unboundedDiagram.faces_end(); ++faceIter){
     // std::cout << "Current point = " << face->dual()->point() << std::endl;
 
-    laguerreCells.push_back( BoundOneCell(face) );
-    AddInternalEdges(face);
+    laguerreCells.at(faceIter->dual()->info()) = BoundOneCell(*faceIter);
+    AddInternalEdges(*faceIter);
   }
 }
 
