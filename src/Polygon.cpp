@@ -3,6 +3,8 @@
 #include <CGAL/Partition_traits_2.h>
 #include <CGAL/partition_2.h>
 
+#include <CGAL/ch_graham_andrew.h>
+
 using namespace sdot;
 
 Polygon::Polygon(Eigen::Matrix2Xd const& pts)
@@ -48,6 +50,21 @@ Eigen::Matrix2Xd Polygon::GetVertices() const
   }
 
   return points;
+}
+
+std::shared_ptr<Polygon> Polygon::ConvexHull() const
+{
+  if(IsConvex()){
+    return std::make_shared<Polygon>(cgalPoly);
+  }else{
+
+    std::shared_ptr<Polygon_2> outPoly = std::make_shared<Polygon_2>();
+    CGAL::ch_graham_andrew( cgalPoly->vertices_begin(),
+                            cgalPoly->vertices_end(),
+                            std::back_inserter(*outPoly));
+
+    return std::make_shared<Polygon>(outPoly);
+  }
 }
 
 

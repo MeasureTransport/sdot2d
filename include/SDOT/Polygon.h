@@ -39,6 +39,11 @@ public:
   */
   std::vector<std::shared_ptr<Polygon>> ConvexPartition() const;
 
+  /** Returns the convex hull of the polygon.  If this polygon is already convex,
+      a pointer to *this is returned.
+  */
+  std::shared_ptr<Polygon> ConvexHull() const;
+
   /** Returns true if the polygon is convex.  False otherwise. */
   bool IsConvex() const{return cgalPoly->is_convex();};
 

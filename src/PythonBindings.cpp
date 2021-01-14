@@ -26,7 +26,8 @@ PYBIND11_MODULE(_pysdot, m) {
     .def(py::init<Eigen::Matrix2Xd const&>())
     .def("GetVertices", &Polygon::GetVertices)
     .def("ConvexPartition",&Polygon::ConvexPartition)
-    .def("IsConvex", &Polygon::IsConvex);
+    .def("IsConvex", &Polygon::IsConvex)
+    .def("ConvexHull", &Polygon::ConvexHull);
 
   py::class_<RegularGrid, std::shared_ptr<RegularGrid>>(m,"RegularGrid")
     .def(py::init<double,double,double,double, unsigned int, unsigned int>())
