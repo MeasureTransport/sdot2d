@@ -107,16 +107,18 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT::ComputeGradient(Eigen::VectorX
 
    double weightedArea  = lagDiag.IntegrateOverCell(cellInd, area_integrand, dist);
 
-   objParts(cellInd) = prices(cellInd)*discrProbs(cellInd)
-                     + lagDiag.IntegrateOverCell(cellInd, trans_integrand, dist)
-                     - prices(cellInd)*weightedArea;
+   if(weightedArea>0){
+     objParts(cellInd) = prices(cellInd)*discrProbs(cellInd)
+                       + lagDiag.IntegrateOverCell(cellInd, trans_integrand, dist)
+                       - prices(cellInd)*weightedArea;
 
-   gradient(cellInd) = discrProbs(cellInd) - weightedArea;
+     gradient(cellInd) = discrProbs(cellInd) - weightedArea;
+   }
    probs(cellInd) = weightedArea;
  }
 
  double totalProb = probs.sum();
- if(std::abs(totalProb-1.0)>5e-7){
+ if(std::abs(totalProb-1.0)>1e-10){
 
    std::cout << "Warning:  Total probability has an error of " << totalProb-1.0 << std::endl;
    // std::cout << "Prices = " << prices.transpose() << std::endl;
@@ -403,6 +405,7 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd        
 
   std::tie(fval, grad) = ComputeGradient(x, *lagDiag);
 
+
   fval *= -1.0;
   grad *= -1.0;
   gradNorm = grad.norm();
@@ -413,7 +416,6 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd        
   }
 
   for(int it=0; it<maxEvals; ++it) {
-
     auto start = std::chrono::steady_clock::now();
     hess = ComputeHessian(*lagDiag);
     hess *= -1.0;
@@ -433,14 +435,17 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd        
     }
 
     start = std::chrono::steady_clock::now();
-    step.tail(dim-1) = SolveSubProblem(fval, grad.tail(dim-1),  hess.block(1,1,dim-1,dim-1), trustRadius);
+    //step.tail(dim-1) = SolveSubProblem(fval, grad.tail(dim-1),  hess.block(1,1,dim-1,dim-1), trustRadius);
+    step = SolveSubProblem(fval, grad,  hess, trustRadius);
+
     end = std::chrono::steady_clock::now();
     std::chrono::duration<double> sub_time = end-start;
 
     // Crude method (kind of like a line search) for ensuring the prices are positive
     newX = x+step;
     while(newX.minCoeff()<1e-15){
-      std::cout << "            Shrinking trust region because of positivity constraint." << std::endl;
+      if(printLevel>1)
+        std::cout << "            Shrinking trust region because of positivity constraint." << std::endl;
       step *= 0.5;
       newX = x+step;
     }
@@ -456,6 +461,20 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd        
     std::tie(newF, newGrad) = ComputeGradient(newX, *newLagDiag);
     end = std::chrono::steady_clock::now();
     std::chrono::duration<double> grad_time = end-start;
+
+    // {
+    // double fdStep = 1e-4;
+    // Eigen::VectorXd x2 = newX;
+    // x2(1) += fdStep;
+    // double fval2;
+    // Eigen::VectorXd grad2;
+    //
+    // auto lagDiag2  = std::make_shared<LaguerreDiagram>(grid->xMin, grid->xMax, grid->yMin, grid->yMax, discrPts, x2);
+    // std::tie(fval2, grad2) = ComputeGradient(x2, *lagDiag2);
+    //
+    // std::cout << "fval2-newF = " << fval2 << " - " << newF << " = " << fval2-newF << std::endl;
+    // std::cout << "FD check: " << (fval2-newF)/fdStep << " vs " << newGrad(1) << " or " << grad2(1) << std::endl << std::endl;
+    // }
 
     // std::cout << "Times:" << std::endl;
     // std::cout << "    Hessian: "  << hess_time.count()  << std::endl;
