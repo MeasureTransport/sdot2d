@@ -87,56 +87,58 @@ Eigen::Matrix2Xd SemidiscreteOT::PointGradient(LaguerreDiagram const& lagDiag) c
 std::pair<double,Eigen::VectorXd> SemidiscreteOT::ComputeGradient(Eigen::VectorXd const& prices,
                                                                   LaguerreDiagram const& lagDiag) const
 {
- const int numCells = prices.size();
+  const int numCells = prices.size();
 
- // Holds the part of the objective for each cell in the Laguerre diagram
- Eigen::VectorXd objParts = Eigen::VectorXd::Zero(numCells);
- Eigen::VectorXd gradient = Eigen::VectorXd::Zero(numCells);
+  // Holds the part of the objective for each cell in the Laguerre diagram
+  Eigen::VectorXd objParts = Eigen::VectorXd::Zero(numCells);
+  Eigen::VectorXd gradient = Eigen::VectorXd::Zero(numCells);
 
- Eigen::VectorXd probs(numCells);
+  Eigen::VectorXd probs(numCells);
 
- //Eigen::MatrixXd cellAreas = Eigen::MatrixXd::Zero(grid->Nx, grid->Ny);
+  //Eigen::MatrixXd cellAreas = Eigen::MatrixXd::Zero(grid->Nx, grid->Ny);
 #if defined(_OPENMP)
- #pragma omp parallel for
+  #pragma omp parallel for
 #endif
- for(int cellInd=0; cellInd<numCells; ++cellInd){
+  for(int cellInd=0; cellInd<numCells; ++cellInd){
 
-   auto area_integrand = std::make_shared<ConstantIntegrand>();
+    auto area_integrand = std::make_shared<ConstantIntegrand>();
 
-   auto trans_integrand = std::make_shared<TransportIntegrand>(discrPts.col(cellInd));
+    auto trans_integrand = std::make_shared<TransportIntegrand>(discrPts.col(cellInd));
 
-   double weightedArea  = lagDiag.IntegrateOverCell(cellInd, area_integrand, dist);
+    double weightedArea  = lagDiag.IntegrateOverCell(cellInd, area_integrand, dist);
 
-   if(weightedArea>0){
-     objParts(cellInd) = prices(cellInd)*discrProbs(cellInd)
-                       + lagDiag.IntegrateOverCell(cellInd, trans_integrand, dist)
-                       - prices(cellInd)*weightedArea;
+    objParts(cellInd) = prices(cellInd)*discrProbs(cellInd) - prices(cellInd)*weightedArea;
+    gradient(cellInd) = discrProbs(cellInd);
 
-     gradient(cellInd) = discrProbs(cellInd) - weightedArea;
-   }
-   probs(cellInd) = weightedArea;
- }
+    if(weightedArea>0){
+      objParts(cellInd) += lagDiag.IntegrateOverCell(cellInd, trans_integrand, dist);
+      gradient(cellInd) += -weightedArea;
+    }
 
- double totalProb = probs.sum();
- if(std::abs(totalProb-1.0)>1e-10){
+    probs(cellInd) = weightedArea;
+  }
 
-   std::cout << "Warning:  Total probability has an error of " << totalProb-1.0 << std::endl;
-   // std::cout << "Prices = " << prices.transpose() << std::endl;
-   // for(unsigned int cellInd=0; cellInd<lagDiag.NumCells(); ++cellInd){
-   //   std::cout << "Cell " << cellInd << " has points " << std::endl;
-   //   Eigen::MatrixXd pts = lagDiag.GetCellVertices(cellInd);
-   //   for(unsigned int ptInd=0; ptInd<pts.cols(); ++ptInd){
-   //      std::cout << "[" << pts(0,ptInd) << "," << pts(1,ptInd) << "], ";
-   //   }
-   //   std::cout << std::endl;
-   // }
-   throw std::runtime_error("Error in total probability.");
+  double totalProb = probs.sum();
+  if(std::abs(totalProb-1.0)>1e-10){
+
+    std::cout << "Warning:  Total probability has an error of " << totalProb-1.0 << std::endl;
+    // std::cout << "Prices = " << prices.transpose() << std::endl;
+    // for(unsigned int cellInd=0; cellInd<lagDiag.NumCells(); ++cellInd){
+    //   std::cout << "Cell " << cellInd << " has points " << std::endl;
+    //   Eigen::MatrixXd pts = lagDiag.GetCellVertices(cellInd);
+    //   for(unsigned int ptInd=0; ptInd<pts.cols(); ++ptInd){
+    //      std::cout << "[" << pts(0,ptInd) << "," << pts(1,ptInd) << "], ";
+    //   }
+    //   std::cout << std::endl;
+    // }
+    throw std::runtime_error("Error in total probability.");
+
+
 
    //SDOT_ASSERT(std::abs(weightedArea-1.0)<1e-10);
- }
+  }
 
-
- return std::make_pair(objParts.sum(), gradient);
+  return std::make_pair(objParts.sum(), gradient);
 }
 
 double SemidiscreteOT::LineIntegral(LaguerreDiagram::Point_2 const& srcPt,
@@ -334,8 +336,9 @@ Eigen::SparseMatrix<double> SemidiscreteOT::ComputeHessian(LaguerreDiagram const
     }
   }
 
-  for(int i=0; i<numCells; ++i)
+  for(int i=0; i<numCells; ++i){
     hessVals.push_back(T(i,i,diagVals(i)));
+  }
 
   Eigen::SparseMatrix<double> hess(numCells,numCells);
   hess.setFromTriplets(hessVals.begin(), hessVals.end());
@@ -388,6 +391,7 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd        
   const double shrinkRate = GetOpt("Shrink Rate", options, 0.25);
   const double maxRadius = GetOpt("Max Radius", options, 10);
 
+  SDOT_ASSERT(shrinkRatio>=acceptRatio);
 
   double fval, newF, gradNorm, newGradNorm;
   Eigen::VectorXd grad, newGrad;
@@ -453,12 +457,17 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd        
     // Try constructing the new Laguerre diagram.  If we can't then shrink the trust region size
     // try{
     start = std::chrono::steady_clock::now();
+
     newLagDiag  = std::make_shared<LaguerreDiagram>(grid->xMin, grid->xMax, grid->yMin, grid->yMax, discrPts, newX);
+
     end = std::chrono::steady_clock::now();
     std::chrono::duration<double> lag_time = end-start;
-
     start = std::chrono::steady_clock::now();
+
     std::tie(newF, newGrad) = ComputeGradient(newX, *newLagDiag);
+    newF *= -1.0;
+    newGrad *= -1.0;
+
     end = std::chrono::steady_clock::now();
     std::chrono::duration<double> grad_time = end-start;
 
@@ -483,16 +492,18 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd        
     // std::cout << "    Gradient: " << grad_time.count()  << std::endl;
 
 
-    newF *= -1.0;
-    newGrad *= -1.0;
+
 
     newGradNorm = newGrad.norm();
 
     // Use the quadratic submodel to predict the change in the gradient norm
     double modDelta = gradNorm - (grad + hess.selfadjointView<Eigen::Lower>()*step).norm();
     double trueDelta = gradNorm - newGradNorm;
+    //double trueDelta = newF-fval;
+    //double modDelta = grad.dot(step) + 0.5*step.dot(hess.selfadjointView<Eigen::Lower>()*step);
 
     double rho = trueDelta/modDelta;
+    //std::cout << "Model, Truth = " << modDelta << ", " << trueDelta << std::endl;
     // std::cout << "          step.dot(grad) = " << step.dot(grad) << std::endl;
     // std::cout << "          delta f = " << trueDelta << std::endl;
     // std::cout << "          modDelta = " << modDelta << std::endl;
@@ -522,6 +533,7 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT::Solve(Eigen::VectorXd        
       lagDiag = newLagDiag;
       grad = newGrad;
       gradNorm = newGradNorm;
+
     }
 
     // Update the trust region size
