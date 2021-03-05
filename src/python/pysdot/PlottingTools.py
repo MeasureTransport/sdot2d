@@ -14,7 +14,8 @@ def PlotPolygonCollection(listOfPolys, ax, **kwargs):
     patches = []
     for cellInd in range(len(listOfPolys)):
         verts = listOfPolys[cellInd].GetVertices()
-        patches.append( mpatch.Polygon(verts.T) )
+        if(verts.shape[1]>0):
+            patches.append( mpatch.Polygon(verts.T) )
 
     #colors = list(range(lagDiag.NumCells()))
     p = PatchCollection(patches, facecolor='gray', edgecolor='k', alpha=0.6)

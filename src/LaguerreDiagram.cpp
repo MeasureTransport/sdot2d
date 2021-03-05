@@ -47,7 +47,8 @@ LaguerreDiagram::LaguerreDiagram(BoundingBox const& bbox,
 Eigen::Matrix2Xd LaguerreDiagram::GetCellVertices(int ind) const
 {
   auto& poly = laguerreCells.at(ind);
-  assert(poly != nullptr);
+  if(poly == nullptr)
+    return Eigen::Matrix2Xd(2,0);
 
   Eigen::Matrix2Xd points(2,poly->size());
 
