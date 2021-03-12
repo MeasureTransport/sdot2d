@@ -103,23 +103,24 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT::ComputeGradient(Eigen::VectorX
     //
     // auto trans_integrand = std::make_shared<TransportIntegrand>(discrPts.col(cellInd));
 
-    auto triArea = [](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2, Eigen::Vector2d const& pt3)
-      {
-        return 0.5*std::abs((pt2[0]*pt1[1]-pt1[0]*pt2[1])+(pt3[0]*pt2[1]-pt2[0]*pt3[1])+(pt1[0]*pt3[1]-pt3[0]*pt1[1]));
-      };
-
-    auto rectArea = [](Eigen::Vector2d const& bottomLeft, Eigen::Vector2d const& topRight)
-      {
-        return std::abs((topRight[0]-bottomLeft[0])*(topRight[1]-bottomLeft[1]));
-      };
-
-
-    double weightedArea  = lagDiag.IntegrateOverCell(cellInd, triArea, rectArea, dist);
+    // auto triArea = [](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2, Eigen::Vector2d const& pt3)
+    //   {
+    //     return 0.5*std::abs((pt2[0]*pt1[1]-pt1[0]*pt2[1])+(pt3[0]*pt2[1]-pt2[0]*pt3[1])+(pt1[0]*pt3[1]-pt3[0]*pt1[1]));
+    //   };
+    //
+    // auto rectArea = [](Eigen::Vector2d const& bottomLeft, Eigen::Vector2d const& topRight)
+    //   {
+    //     return std::abs((topRight[0]-bottomLeft[0])*(topRight[1]-bottomLeft[1]));
+    //   };
+    //
+    //
+    // double weightedArea  = lagDiag.IntegrateOverCell(cellInd, triArea, rectArea, dist);
 
     objParts(cellInd) = prices(cellInd)*discrProbs(cellInd);// - prices(cellInd)*weightedArea;
-    gradient(cellInd) = discrProbs(cellInd);
+    gradient(cellInd) = BalancedConjugate::Derivative(-prices(cellInd))*discrProbs(cellInd);
 
-    if(weightedArea>0){
+    // if(weightedArea>0){
+
       auto triFunc = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2, Eigen::Vector2d const& pt3)
         {
           return BalancedConjugate::TriangularIntegral(prices(cellInd), discrPts.col(cellInd), pt1,pt2,pt3);
@@ -130,31 +131,42 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT::ComputeGradient(Eigen::VectorX
         };
 
       objParts(cellInd) = -lagDiag.IntegrateOverCell(cellInd, triFunc, rectFunc, dist);
-      gradient(cellInd) += -weightedArea;
+
+
+      auto triFuncDeriv = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2, Eigen::Vector2d const& pt3)
+        {
+          return BalancedConjugate::TriangularIntegralDeriv(prices(cellInd), discrPts.col(cellInd), pt1,pt2,pt3);
+        };
+      auto rectFuncDeriv = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2)
+        {
+          return BalancedConjugate::RectangularIntegralDeriv(prices(cellInd), discrPts.col(cellInd), pt1,pt2);
+        };
+
+      gradient(cellInd) += -lagDiag.IntegrateOverCell(cellInd, triFuncDeriv, rectFuncDeriv, dist); //-weightedArea;
     }
 
-    probs(cellInd) = weightedArea;
-  }
-
-  double totalProb = probs.sum();
-  if(std::abs(totalProb-1.0)>1e-10){
-
-    std::cout << "Warning:  Total probability has an error of " << totalProb-1.0 << std::endl;
-    // std::cout << "Prices = " << prices.transpose() << std::endl;
-    // for(unsigned int cellInd=0; cellInd<lagDiag.NumCells(); ++cellInd){
-    //   std::cout << "Cell " << cellInd << " has points " << std::endl;
-    //   Eigen::MatrixXd pts = lagDiag.GetCellVertices(cellInd);
-    //   for(unsigned int ptInd=0; ptInd<pts.cols(); ++ptInd){
-    //      std::cout << "[" << pts(0,ptInd) << "," << pts(1,ptInd) << "], ";
-    //   }
-    //   std::cout << std::endl;
-    // }
-    throw std::runtime_error("Error in total probability.");
-
-
-
-   //SDOT_ASSERT(std::abs(weightedArea-1.0)<1e-10);
-  }
+  //   probs(cellInd) = weightedArea;
+  // }
+  //
+  // double totalProb = probs.sum();
+  // if(std::abs(totalProb-1.0)>1e-10){
+  //
+  //   std::cout << "Warning:  Total probability has an error of " << totalProb-1.0 << std::endl;
+  //   // std::cout << "Prices = " << prices.transpose() << std::endl;
+  //   // for(unsigned int cellInd=0; cellInd<lagDiag.NumCells(); ++cellInd){
+  //   //   std::cout << "Cell " << cellInd << " has points " << std::endl;
+  //   //   Eigen::MatrixXd pts = lagDiag.GetCellVertices(cellInd);
+  //   //   for(unsigned int ptInd=0; ptInd<pts.cols(); ++ptInd){
+  //   //      std::cout << "[" << pts(0,ptInd) << "," << pts(1,ptInd) << "], ";
+  //   //   }
+  //   //   std::cout << std::endl;
+  //   // }
+  //   throw std::runtime_error("Error in total probability.");
+  //
+  //
+  //
+  //  //SDOT_ASSERT(std::abs(weightedArea-1.0)<1e-10);
+  // }
 
   return std::make_pair(objParts.sum(), gradient);
 }
