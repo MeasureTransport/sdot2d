@@ -20,7 +20,7 @@
 #include "SDOT/BoundingBox.h"
 #include "SDOT/Distribution2d.h"
 #include "SDOT/Polygon.h"
-#include "SDOT/Integrands/Integrand.h"
+#include "SDOT/PolygonRasterize.h"
 
 namespace sdot{
 
@@ -162,12 +162,21 @@ public:
       input is defined, then this functions computed the weighted integral
       $\int_A f(x)w(x) dx$ for the distribution $w(x)$.
   */
-  double IntegrateOverCell(unsigned int                     cellInd,
-                           std::shared_ptr<Integrand> const& integrand,
-                           std::shared_ptr<Distribution2d> const& dist) const;
 
-  double IntegrateOverCell(unsigned int                     cellInd,
-                           std::shared_ptr<Integrand> const& integrand) const;
+  template<typename TriType>
+  double IntegrateOverCell(unsigned int cellInd,
+                           TriType triFunc) const;
+
+  template<typename TriType, typename RectType>
+  double IntegrateOverCell(unsigned int cellInd,
+                           TriType triFunc,
+                           RectType rectFunc) const{return IntegrateOverCell(cellInd,triFunc);};
+
+  template<typename TriType, typename RectType>
+  double IntegrateOverCell(unsigned int cellInd,
+                           TriType triFunc,
+                           RectType rectFunc,
+                           std::shared_ptr<Distribution2d> const& dist) const;
 
   /** Repeatedly calls CellCentroid to compute the centers of mass for all
       Laguerre cells.  Column $i$ of the output matrix contains the centroid of
@@ -263,6 +272,158 @@ private:
   const double infDist;
 
 };
+
+
+
+template<typename TriType, typename RectType>
+double LaguerreDiagram::IntegrateOverCell(unsigned int cellInd,
+                                          TriType triFunc,
+                                          RectType rectFunc,
+                                          std::shared_ptr<Distribution2d> const& dist) const
+{
+
+  auto start = std::chrono::steady_clock::now();
+  if(dist==nullptr)
+    return IntegrateOverCell(cellInd, triFunc);
+
+  auto& grid = dist->Grid();
+
+  double result = 0.0;
+
+  // Loop over the grid cells in this Laguerre cell
+  if(laguerreCells.at(cellInd)==nullptr)
+    return 0.0;
+  if(laguerreCells.at(cellInd)->size()==0)
+    return 0.0;
+
+  auto start2 = std::chrono::steady_clock::now();
+  PolygonRasterizeIter gridIter(dist->Grid(), laguerreCells.at(cellInd));
+  auto end2 = std::chrono::steady_clock::now();
+  double setup_time = std::chrono::duration<double>(end2-start2).count();
+
+  unsigned int xInd, yInd;
+  Eigen::Vector2d pt1(2), pt2(2), pt3(2);
+  double gridCellDens;
+
+  double bndry_total = 0;
+  int num_bndry = 0;
+  double int_total = 0;
+  double incr_total = 0;
+  int num_int = 0;
+  int num_incr = 0;
+
+  while(gridIter.IsValid()){
+
+    xInd = gridIter.Indices().first;
+    yInd = gridIter.Indices().second;
+
+    // The probability in this grid cell
+    gridCellDens = dist->Density(xInd,yInd);
+
+    if(gridCellDens>0.0){
+
+      // The area of the intersection of this grid cell and the Laguerre cell
+      double interResult = 0.0;
+
+      if(gridIter.IsBoundary()){
+        start2 = std::chrono::steady_clock::now();
+
+        // Break the intersection polygon into triangles and add contributions from each triangle
+        std::shared_ptr<PolygonRasterizeIter::Polygon_2> overlapPoly = gridIter.OverlapPoly();
+        assert(overlapPoly);
+        assert(overlapPoly->size()>2); // <- Makes sure there is at least 3 nodes in the polygon
+
+        auto beginVert = overlapPoly->vertices_begin();
+        auto vert1 = beginVert;
+        vert1++;
+        auto vert2 = vert1;
+        vert2++;
+
+        pt1[0] = CGAL::to_double( beginVert->x() );
+        pt1[1] = CGAL::to_double( beginVert->y() );
+
+        for(; vert2!=overlapPoly->vertices_end(); vert2++, vert1++)
+        {
+          pt2[0] = CGAL::to_double( vert1->x() );
+          pt2[1] = CGAL::to_double( vert1->y() );
+          pt3[0] = CGAL::to_double( vert2->x() );
+          pt3[1] = CGAL::to_double( vert2->y() );
+
+          interResult += triFunc(pt1,pt2,pt3);
+        }
+
+        end2 = std::chrono::steady_clock::now();
+        bndry_total += std::chrono::duration<double>(end2-start2).count();
+        num_bndry++;
+
+      }else{
+        start2 = std::chrono::steady_clock::now();
+
+        pt1[0] = grid->xMin + grid->dx*xInd;
+        pt1[1] = grid->yMin + grid->dy*yInd;
+        pt2[0] = grid->xMin + grid->dx*(xInd+1);
+        pt2[1] = grid->yMin + grid->dy*(yInd+1);
+
+        interResult += rectFunc(pt1,pt2);
+
+        end2 = std::chrono::steady_clock::now();
+        int_total += std::chrono::duration<double>(end2-start2).count();
+        num_int++;
+
+      }
+
+      result += interResult*gridCellDens;
+    }
+
+    start2 = std::chrono::steady_clock::now();
+
+    gridIter.Increment();
+
+    end2 = std::chrono::steady_clock::now();
+    incr_total += std::chrono::duration<double>(end2-start2).count();
+    num_incr++;
+  }
+
+  return result;
+}
+
+/* Implementation of templated function. */
+template<typename TriType>
+double LaguerreDiagram::IntegrateOverCell(unsigned int cellInd, TriType triFunc) const
+{
+  Eigen::Vector2d pt1(2), pt2(2), pt3(2);
+
+  if(laguerreCells.at(cellInd)==nullptr){
+    return 0;
+  }
+
+  auto beginVert = laguerreCells.at(cellInd)->vertices_begin();
+  auto vert1 = beginVert;
+  vert1++;
+  auto vert2 = vert1;
+  vert2++;
+
+  pt1(0) = CGAL::to_double( beginVert->x() );
+  pt1(1) = CGAL::to_double( beginVert->y() );
+
+  //interArea = gridCellDens*CGAL::to_double( overlapPoly->area() );
+
+  double result = 0.0;
+  double triArea;
+
+  for(; vert2!=laguerreCells.at(cellInd)->vertices_end(); vert2++, vert1++)
+  {
+    pt2(0) = CGAL::to_double( vert1->x() );
+    pt2(1) = CGAL::to_double( vert1->y() );
+    pt3(0) = CGAL::to_double( vert2->x() );
+    pt3(1) = CGAL::to_double( vert2->y() );
+
+    result += triFunc(pt1,pt2,pt3);
+  }
+
+  return result;
+}
+
 
 } // namespace sdot
 

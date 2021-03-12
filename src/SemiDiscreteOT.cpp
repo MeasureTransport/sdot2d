@@ -2,9 +2,7 @@
 
 
 #include "SDOT/Assert.h"
-
-#include "SDOT/Integrands/ConstantIntegrand.h"
-#include "SDOT/Integrands/TransportIntegrand.h"
+#include "SDOT/ConjugateFunctions/BalancedConjugate.h"
 
 #include <CGAL/Kernel/global_functions.h>
 
@@ -101,17 +99,37 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT::ComputeGradient(Eigen::VectorX
 #endif
   for(int cellInd=0; cellInd<numCells; ++cellInd){
 
-    auto area_integrand = std::make_shared<ConstantIntegrand>();
+    // auto area_integrand = std::make_shared<ConstantIntegrand>();
+    //
+    // auto trans_integrand = std::make_shared<TransportIntegrand>(discrPts.col(cellInd));
 
-    auto trans_integrand = std::make_shared<TransportIntegrand>(discrPts.col(cellInd));
+    auto triArea = [](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2, Eigen::Vector2d const& pt3)
+      {
+        return 0.5*std::abs((pt2[0]*pt1[1]-pt1[0]*pt2[1])+(pt3[0]*pt2[1]-pt2[0]*pt3[1])+(pt1[0]*pt3[1]-pt3[0]*pt1[1]));
+      };
 
-    double weightedArea  = lagDiag.IntegrateOverCell(cellInd, area_integrand, dist);
+    auto rectArea = [](Eigen::Vector2d const& bottomLeft, Eigen::Vector2d const& topRight)
+      {
+        return std::abs((topRight[0]-bottomLeft[0])*(topRight[1]-bottomLeft[1]));
+      };
 
-    objParts(cellInd) = prices(cellInd)*discrProbs(cellInd) - prices(cellInd)*weightedArea;
+
+    double weightedArea  = lagDiag.IntegrateOverCell(cellInd, triArea, rectArea, dist);
+
+    objParts(cellInd) = prices(cellInd)*discrProbs(cellInd);// - prices(cellInd)*weightedArea;
     gradient(cellInd) = discrProbs(cellInd);
 
     if(weightedArea>0){
-      objParts(cellInd) += lagDiag.IntegrateOverCell(cellInd, trans_integrand, dist);
+      auto triFunc = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2, Eigen::Vector2d const& pt3)
+        {
+          return BalancedConjugate::TriangularIntegral(prices(cellInd), discrPts.col(cellInd), pt1,pt2,pt3);
+        };
+      auto rectFunc = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2)
+        {
+          return BalancedConjugate::RectangularIntegral(prices(cellInd), discrPts.col(cellInd), pt1,pt2);
+        };
+
+      objParts(cellInd) = -lagDiag.IntegrateOverCell(cellInd, triFunc, rectFunc, dist);
       gradient(cellInd) += -weightedArea;
     }
 

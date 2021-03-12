@@ -20,8 +20,6 @@ set(LibrarySources
     src/DiscretizedDistribution.cpp
     src/SemiDiscreteOT.cpp
     src/Polygon.cpp
-    src/Integrands/ConstantIntegrand.cpp
-    src/Integrands/TransportIntegrand.cpp
     src/OptionUtilities.cpp
     src/ConjugateFunctions/BalancedConjugate.cpp
 )
@@ -63,8 +61,9 @@ if(GTest_FOUND)
   message(STATUS "GTest found.")
 
   set(unitTestSources
-    tests/unit/IntegrandTests.cpp
     tests/unit/ConjugateTests.cpp
+    tests/unit/LaguerreDiagramTests.cpp
+    tests/unit/SemiDiscreteOTTests.cpp
     tests/unit/RunUnitTests.cpp
   )
 
