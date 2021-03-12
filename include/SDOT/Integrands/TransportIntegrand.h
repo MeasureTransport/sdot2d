@@ -5,7 +5,11 @@
 
 namespace sdot {
 
-  /** Defines the transport cost to move mass from a point x to p. */
+  /**
+   @class TransportIntegrand
+   @ingroup Integrands
+   Defines the transport cost to move mass from a point x to p.
+   */
   class TransportIntegrand : public Integrand{
   public:
 

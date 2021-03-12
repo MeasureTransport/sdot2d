@@ -6,6 +6,7 @@
 namespace sdot{
 
   /** @class ConstantIntegrand
+      @ingroup Integrands
       Defines a constant integrand f(x).
   */
   class ConstantIntegrand : public Integrand {

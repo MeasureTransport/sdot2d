@@ -5,7 +5,12 @@
 
 namespace sdot{
 
+/**
+@defgroup Integrands
+*/
+
   /** @class Integrand
+      @ingroup Integrands
       Provides an interface to functions that will be integrated
       over Laguerre cells.   Let $f(x)$ be a function defined over
       a two dimensional domain $\Omega_x$.   This class provides

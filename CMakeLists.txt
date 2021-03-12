@@ -30,18 +30,11 @@ set(WrapperSources
     src/PythonBindings.cpp
 )
 
+##################################
 # Find CGAL
 find_package(CGAL REQUIRED)
 find_package(GMP)
 find_package(MPFR)
-
-#find_package(OpenMP)
-#if(OPENMP_FOUND)
-#    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-#    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-#    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
-#endif(OPENMP_FOUND)
-
 
 include_directories(include ${CGAL_INCLUDE_DIRS})
 set(ExternalLibraries ${CGAL_LIBRARY} ${GMP_LIBRARIES} ${MPFR_LIBRARIES})
@@ -57,20 +50,48 @@ endif()
 add_library(sdot SHARED ${LibrarySources})
 target_link_libraries(sdot ${ExternalLibraries})
 
+
+
+###################################
 ## Add test executables
+enable_testing()
+find_package(GTest HINTS ${SDOT_GTEST_DIR})
+
+if(GTest_FOUND)
+
+  message(STATUS "GTest found.")
+
+  set(unitTestSources
+    tests/unit/IntegrandTests.cpp
+    tests/unit/RunUnitTests.cpp
+  )
+
+  add_executable(RunUnitTests ${unitTestSources})
+  target_link_libraries(RunUnitTests sdot ${OtherLibraries} GTest::gtest)
+  add_test(UnitTests RunUnitTests)
+
+else()
+  message(STATUS "GTest was not found and unit tests will be skipped.")
+endif()
+
 add_executable(ConstructLaguerre tests/ConstructLaguerre.cpp)
 target_link_libraries(ConstructLaguerre sdot ${OtherLibraries})
+add_test(BasicLaguerre ConstructLaguerre)
 
 add_executable(ComputeSDOT tests/ComputeSDOT.cpp)
 target_link_libraries(ComputeSDOT sdot ${OtherLibraries})
+add_test(BasicOT ComputeSDOT)
 
 add_executable(Convexify tests/Convexify.cpp)
 target_link_libraries(Convexify sdot ${OtherLibraries})
+add_test(Convexify Convexify)
 
 add_executable(CircleProblem tests/CircleProblem.cpp)
 target_link_libraries(CircleProblem sdot ${OtherLibraries})
+add_test(SimpleCircles CircleProblem)
 
-
+###################################
+## Python Bindings
 # Add pybind11 wrapper
 set(PYBIND11_CPP_STANDARD -std=c++11)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/pybind11)
