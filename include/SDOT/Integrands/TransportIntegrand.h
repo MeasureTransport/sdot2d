@@ -8,7 +8,11 @@ namespace sdot {
   /**
    @class TransportIntegrand
    @ingroup Integrands
-   Defines the transport cost to move mass from a point x to p.
+   Defines the transport cost to move mass from a point \f$x\f$ to \f$p\f$.
+   \f[
+   \int c(x,p) dx = \int \frac{1}{2}\|x-p\|^2 dx
+   \f]
+   The point \f$p\f$ is set in the constructor.
    */
   class TransportIntegrand : public Integrand{
   public:

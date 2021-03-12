@@ -23,6 +23,7 @@ set(LibrarySources
     src/Integrands/ConstantIntegrand.cpp
     src/Integrands/TransportIntegrand.cpp
     src/OptionUtilities.cpp
+    src/ConjugateFunctions/BalancedConjugate.cpp
 )
 
 # Set the source files for the python wrapper
@@ -63,6 +64,7 @@ if(GTest_FOUND)
 
   set(unitTestSources
     tests/unit/IntegrandTests.cpp
+    tests/unit/ConjugateTests.cpp
     tests/unit/RunUnitTests.cpp
   )
 
