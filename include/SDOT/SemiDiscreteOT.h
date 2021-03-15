@@ -13,6 +13,7 @@
 namespace sdot{
 
   /** Class for solving semi-discrete optimal transport problems. */
+  template<typename ConjugateFunctionType>
   class SemidiscreteOT
   {
 

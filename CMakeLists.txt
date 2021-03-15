@@ -21,7 +21,7 @@ set(LibrarySources
     src/SemiDiscreteOT.cpp
     src/Polygon.cpp
     src/OptionUtilities.cpp
-    src/ConjugateFunctions/BalancedConjugate.cpp
+    src/Distances/Wasserstein2.cpp
 )
 
 # Set the source files for the python wrapper
@@ -61,7 +61,7 @@ if(GTest_FOUND)
   message(STATUS "GTest found.")
 
   set(unitTestSources
-    tests/unit/ConjugateTests.cpp
+    tests/unit/DistanceTests.cpp
     tests/unit/LaguerreDiagramTests.cpp
     tests/unit/SemiDiscreteOTTests.cpp
     tests/unit/RunUnitTests.cpp

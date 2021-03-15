@@ -1,9 +1,9 @@
-#ifndef CONJUGATEFUNCTION_H
-#define CONJUGATEFUNCTION_H
+#ifndef DISTANCES_DISTANCES_H
+#define DISTANCES_DISTANCES_H
 
 namespace sdot {
 
-/** @defgroup ConjugateFunctions
+/** @defgroup Distances
     @brief The Fenchel-Legendre conjugate functions for unbalanced SDOT.
     @details In [Bourne et al., 2018], a family of unbalanced SDOT approaches
     is described.  The standard Kantorovich optimal transport problem, which
@@ -26,7 +26,8 @@ namespace sdot {
     integrands of the form \f$F^|ast(w- c(x,x_i))\f$.  This group contains classes
     that support evaluating and integrating these conjugate functions.
 
-    Each conjugate function class defines 8 static functions for evaluating the
+    Each "distance" class defines the conjugate function for a specific unbalanced
+    OT "distance".  It does this through static functions for evaluating the
     function and computing integrals over triangular and rectangular domains.
     The use of static functions is used, as opposed to inheritance and virtual
     functions, to make it easier to leverage OpenMP and Kokkos.

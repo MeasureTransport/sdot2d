@@ -7,12 +7,14 @@
 #include <memory>
 
 #include "SDOT/SemiDiscreteOT.h"
+#include "SDOT/Distances/Wasserstein2.h"
+
 #include "SDOT/PolygonRasterize.h"
 #include "SDOT/RegularGrid.h"
 #include "SDOT/DiscretizedDistribution.h"
 
 using namespace sdot;
-
+using namespace sdot::distances;
 
 void LaguerreDiagramTest()
 {
@@ -78,7 +80,7 @@ int main(int argc, char* argv[])
   auto dist = std::make_shared<DiscretizedDistribution>(grid, density);
 
   // Evalaute the SDOT objective
-  auto sdot = std::make_shared<SemidiscreteOT>(dist, pts, discrProbs);
+  auto sdot = std::make_shared<SemidiscreteOT<Wasserstein2>>(dist, pts, discrProbs);
 
   Eigen::VectorXd optPrices;
   double optVal;

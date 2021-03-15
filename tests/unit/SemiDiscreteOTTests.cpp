@@ -2,11 +2,12 @@
 
 #include "SDOT/RegularGrid.h"
 #include "SDOT/DiscretizedDistribution.h"
+#include "SDOT/Distances/Wasserstein2.h"
 
 #include <gtest/gtest.h>
 
 using namespace sdot;
-
+using namespace sdot::distances;
 
 TEST(SemiDiscreteOT, Construction)
 {
@@ -21,7 +22,7 @@ TEST(SemiDiscreteOT, Construction)
   auto grid = std::make_shared<RegularGrid>(0.0, 0.0, 1.0, 1.0, 1, 1);
   auto dist = std::make_shared<DiscretizedDistribution>(grid, Eigen::MatrixXd::Ones(1,1));
 
-  SemidiscreteOT solver(dist, pts, probs);
+  SemidiscreteOT<Wasserstein2> solver(dist, pts, probs);
   solver.Solve(Eigen::VectorXd::Ones(pts.cols()));
 
   auto diag = solver.Diagram();

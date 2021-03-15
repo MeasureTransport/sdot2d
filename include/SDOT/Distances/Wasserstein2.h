@@ -1,15 +1,18 @@
-#ifndef BALANCEDCONJUGATE_H
-#define BALANCEDCONJUGATE_H
+#ifndef DISTANCES_WASSERSTEIN2_H
+#define DISTANCES_WASSERSTEIN2_H
 
 #include <Eigen/Core>
 
 namespace sdot {
 
-/** @class BalancedConjugate
-    @ingroup ConjugateFunctions
+namespace distances{
+
+
+/** @class Wasserstein2
+    @ingroup Distances
     @brief Defines the conjugate function \f$F^\ast\f$ for the standard balanced Wasserstein-2 case.
 */
-class BalancedConjugate{
+class Wasserstein2{
 public:
 
   static double Evaluate(double z);
@@ -49,8 +52,11 @@ public:
                                           Eigen::Vector2d const& lowerLeft,
                                           Eigen::Vector2d const& upperRight);
 
-}; // class BalancedConjugate
 
+
+}; // class Wasserstein2
+
+}// namespace distances
 } // namespace sdot
 
 #endif

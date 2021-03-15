@@ -11,9 +11,10 @@
 #include "SDOT/RegularGrid.h"
 #include "SDOT/DiscretizedDistribution.h"
 #include "SDOT/OptionUtilities.h"
+#include "SDOT/Distances/Wasserstein2.h"
 
 using namespace sdot;
-
+using namespace sdot::distances;
 
 void AddCircle(Eigen::MatrixXd &dens, double x, double y, double r, double dx, double dy)
 {
@@ -69,7 +70,7 @@ int main(int argc, char* argv[])
   Eigen::VectorXd discrProbs = Eigen::VectorXd::Ones(pts.cols());
   discrProbs /= pts.cols();
 
-  auto sdot = std::make_shared<SemidiscreteOT>(dist, pts, discrProbs);
+  auto sdot = std::make_shared<SemidiscreteOT<Wasserstein2>>(dist, pts, discrProbs);
 
   Eigen::VectorXd optPrices;
   double optVal;
@@ -107,7 +108,7 @@ int main(int argc, char* argv[])
     Eigen::MatrixXd newPts = pts;
     newPts(0,ptInd) += fdStep;
 
-    auto newSdot = std::make_shared<SemidiscreteOT>(dist, newPts, discrProbs);
+    auto newSdot = std::make_shared<SemidiscreteOT<Wasserstein2>>(dist, newPts, discrProbs);
     std::tie(newPrices,newVal) = newSdot->Solve(Eigen::VectorXd::Ones(numPts), opts);
 
     std::cout << "Point " << ptInd << std::endl;
