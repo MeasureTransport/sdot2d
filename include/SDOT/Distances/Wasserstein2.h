@@ -38,7 +38,7 @@ public:
   points.
   */
   static double TriangularIntegral(double                 wi,
-                                   Eigen::Vector2d const& xi,
+                                   Eigen::Ref<const Eigen::Vector2d> const& xi,
                                    Eigen::Vector2d const& pt1,
                                    Eigen::Vector2d const& pt2,
                                    Eigen::Vector2d const& pt3);
@@ -53,34 +53,43 @@ public:
    on the top right (maxx, maxy).
    */
   static double RectangularIntegral(double                wi,
-                                   Eigen::Vector2d const& xi,
+                                   Eigen::Ref<const Eigen::Vector2d> const& xi,
                                    Eigen::Vector2d const& lowerLeft,
                                    Eigen::Vector2d const& upperRight);
 
   static double TriangularIntegralDeriv(double                 wi,
-                                        Eigen::Vector2d const& xi,
+                                        Eigen::Ref<const Eigen::Vector2d> const& xi,
                                         Eigen::Vector2d const& pt1,
                                         Eigen::Vector2d const& pt2,
                                         Eigen::Vector2d const& pt3);
 
   static double RectangularIntegralDeriv(double                 wi,
-                                         Eigen::Vector2d const& xi,
+                                         Eigen::Ref<const Eigen::Vector2d> const& xi,
                                          Eigen::Vector2d const& lowerLeft,
                                          Eigen::Vector2d const& upperRight);
 
   static double TriangularIntegralDeriv2(double                 wi,
-                                         Eigen::Vector2d const& xi,
+                                         Eigen::Ref<const Eigen::Vector2d> const& xi,
                                          Eigen::Vector2d const& pt1,
                                          Eigen::Vector2d const& pt2,
                                          Eigen::Vector2d const& pt3);
 
   static double RectangularIntegralDeriv2(double                 wi,
-                                          Eigen::Vector2d const& xi,
+                                          Eigen::Ref<const Eigen::Vector2d> const& xi,
                                           Eigen::Vector2d const& lowerLeft,
                                           Eigen::Vector2d const& upperRight);
 
+  /**
+  Returns
+  \f[
+  \int_{\partial \Omega} (F^\ast)^\prime(w_i - c(x,x_i)) dS,
+  \f]
+  over a line segment $\partial \Omega$ define by a starting point and an
+  ending point.   Because \f$(F^\ast)^\prime=1\f$ for the Wasserstein-2 distance,
+  the value of this line integral is simply the length of the line segment.
+  */
   static double LineIntegralDeriv(double                 wi,
-                                  Eigen::Vector2d const& xi,
+                                  Eigen::Ref<const Eigen::Vector2d> const& xi,
                                   Eigen::Vector2d const& pt1,
                                   Eigen::Vector2d const& pt2);
 

@@ -13,7 +13,7 @@ double Wasserstein2::Derivative(double z){
 };
 
 double Wasserstein2::TriangularIntegral(double wi,
-                                        Eigen::Vector2d const& xi,
+                                        Eigen::Ref<const Eigen::Vector2d> const& xi,
                                         Eigen::Vector2d const& pt1,
                                         Eigen::Vector2d const& pt2,
                                         Eigen::Vector2d const& pt3)
@@ -25,7 +25,7 @@ double Wasserstein2::TriangularIntegral(double wi,
 }
 
 double Wasserstein2::RectangularIntegral(double wi,
-                                         Eigen::Vector2d const& xi,
+                                         Eigen::Ref<const Eigen::Vector2d> const& xi,
                                          Eigen::Vector2d const& bottomLeft,
                                          Eigen::Vector2d const& topRight)
 {
@@ -36,7 +36,7 @@ double Wasserstein2::RectangularIntegral(double wi,
 }
 
 double Wasserstein2::TriangularIntegralDeriv(double wi,
-                                             Eigen::Vector2d const& xi,
+                                             Eigen::Ref<const Eigen::Vector2d> const& xi,
                                              Eigen::Vector2d const& pt1,
                                              Eigen::Vector2d const& pt2,
                                              Eigen::Vector2d const& pt3)
@@ -45,9 +45,35 @@ double Wasserstein2::TriangularIntegralDeriv(double wi,
 }
 
 double Wasserstein2::RectangularIntegralDeriv(double wi,
-                                              Eigen::Vector2d const& xi,
+                                              Eigen::Ref<const Eigen::Vector2d> const& xi,
                                               Eigen::Vector2d const& bottomLeft,
                                               Eigen::Vector2d const& topRight)
 {
   return std::abs( (topRight[0]-bottomLeft[0])*(topRight[1]-bottomLeft[1]) );
+}
+
+double Wasserstein2::LineIntegralDeriv(double                 wi,
+                                       Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                       Eigen::Vector2d const& pt1,
+                                       Eigen::Vector2d const& pt2)
+{
+    return (pt1-pt2).norm();
+}
+
+
+double Wasserstein2::TriangularIntegralDeriv2(double                 wi,
+                                              Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                              Eigen::Vector2d const& pt1,
+                                              Eigen::Vector2d const& pt2,
+                                              Eigen::Vector2d const& pt3)
+{
+  return 0;
+}
+
+double Wasserstein2::RectangularIntegralDeriv2(double                 wi,
+                                               Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                               Eigen::Vector2d const& lowerLeft,
+                                               Eigen::Vector2d const& upperRight)
+{
+  return 0;
 }

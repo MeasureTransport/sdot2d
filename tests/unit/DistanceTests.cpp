@@ -29,4 +29,7 @@ TEST(Distances, Wasserstein2)
 
   val = Wasserstein2::TriangularIntegralDeriv(wi,xi, bottomLeft, bottomRight, topLeft);
   EXPECT_DOUBLE_EQ(0.5, val);
+
+  val = Wasserstein2::LineIntegralDeriv(wi, xi, bottomLeft, topRight);
+  EXPECT_DOUBLE_EQ(std::sqrt(2), val);
 }

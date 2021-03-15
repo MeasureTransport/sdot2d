@@ -64,7 +64,7 @@ std::tuple<double,Eigen::VectorXd, Eigen::SparseMatrix<double>> SemidiscreteOT<C
     Eigen::SparseMatrix<double> hess;
 
     std::tie(obj,grad) = ComputeGradient(prices, lagDiag);
-    hess = ComputeHessian(lagDiag);
+    hess = ComputeHessian(prices, lagDiag);
 
     return std::make_tuple(obj,grad,hess);
 }
@@ -87,7 +87,7 @@ Eigen::Matrix2Xd SemidiscreteOT<ConjugateFunctionType>::PointGradient(LaguerreDi
 
 template<typename ConjugateFunctionType>
 std::pair<double,Eigen::VectorXd> SemidiscreteOT<ConjugateFunctionType>::ComputeGradient(Eigen::VectorXd const& prices,
-                                                                  LaguerreDiagram const& lagDiag) const
+                                                                                         LaguerreDiagram const& lagDiag) const
 {
   const int numCells = prices.size();
 
@@ -134,7 +134,7 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT<ConjugateFunctionType>::Compute
           return ConjugateFunctionType::RectangularIntegral(prices(cellInd), discrPts.col(cellInd), pt1,pt2);
         };
 
-      objParts(cellInd) = -lagDiag.IntegrateOverCell(cellInd, triFunc, rectFunc, dist);
+      objParts(cellInd) += -lagDiag.IntegrateOverCell(cellInd, triFunc, rectFunc, dist);
 
 
       auto triFuncDeriv = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2, Eigen::Vector2d const& pt3)
@@ -177,8 +177,10 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT<ConjugateFunctionType>::Compute
 
 
 template<typename ConjugateFunctionType>
-double SemidiscreteOT<ConjugateFunctionType>::LineIntegral(LaguerreDiagram::Point_2 const& srcPt,
-                                    LaguerreDiagram::Point_2 const& tgtPt) const
+double SemidiscreteOT<ConjugateFunctionType>::LineIntegral(double wi,
+                                                           Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                                           LaguerreDiagram::Point_2 const& srcPt,
+                                                           LaguerreDiagram::Point_2 const& tgtPt) const
 {
   const double compTol = 1e-11;
 
@@ -187,8 +189,14 @@ double SemidiscreteOT<ConjugateFunctionType>::LineIntegral(LaguerreDiagram::Poin
   double xt = CGAL::to_double(tgtPt.x());
   double yt = CGAL::to_double(tgtPt.y());
 
+  // Points on either end of a line segment
+  Eigen::Vector2d startPt(2), endPt(2);
+
   // if the edge is vertical...
   if(std::abs(xt-xs)<compTol){
+
+    startPt(0) = xs;
+    endPt(0) = xs;
 
     // Assume we are working from bottom to top
     if(yt<ys){
@@ -208,20 +216,30 @@ double SemidiscreteOT<ConjugateFunctionType>::LineIntegral(LaguerreDiagram::Poin
     if(std::abs(nextY-currY)<compTol)
       nextY += grid->dy;
 
+
     while(nextY<maxY-compTol){
-      val += (nextY-currY)*dist->Density(xInd,yInd);
+      startPt(1) = currY;
+      endPt(1) = nextY;
+
+      val += ConjugateFunctionType::LineIntegralDeriv(wi,xi, startPt, endPt)*dist->Density(xInd,yInd);
 
       yInd++;
       currY = nextY;
       nextY = currY+grid->dy;
     }
 
-    val += (maxY-currY)*dist->Density(xInd,yInd);
+    startPt(1) = currY;
+    endPt(1) = maxY;
+
+    val += ConjugateFunctionType::LineIntegralDeriv(wi, xi, startPt, endPt)*dist->Density(xInd,yInd);
 
     return val;
 
   // If the edge is horizontal
   }else if(std::abs(yt-ys)<compTol){
+
+    startPt(1) = ys;
+    endPt(1) = ys;
 
     // Assume we are working from left to right and swap direction if we're not
     if(xt<xs){
@@ -243,14 +261,20 @@ double SemidiscreteOT<ConjugateFunctionType>::LineIntegral(LaguerreDiagram::Poin
       nextX += grid->dx;
 
     while(nextX<maxX-compTol){
-      val += (nextX-currX)*dist->Density(xInd,yInd);
+      startPt(0) = currX;
+      endPt(0) = nextX;
+
+      val += ConjugateFunctionType::LineIntegralDeriv(wi, xi, startPt, endPt)*dist->Density(xInd,yInd);
 
       xInd++;
       currX = nextX;
       nextX = currX+grid->dx;
     }
 
-    val += (maxX-currX)*dist->Density(xInd,yInd);
+    startPt(0) = currX;
+    endPt(0) = maxX;
+
+    val += ConjugateFunctionType::LineIntegralDeriv(wi, xi, startPt, endPt)*dist->Density(xInd,yInd);
 
     return val;
 
@@ -310,7 +334,12 @@ double SemidiscreteOT<ConjugateFunctionType>::LineIntegral(LaguerreDiagram::Poin
 
 
     while(nextt<1.0-compTol){
-      val += (nextt-currt)*segLenth*dist->Density(xInd,yInd);
+      startPt(0) = xs + dx*currt;
+      startPt(1) = ys + dy*currt;
+      endPt(0) = xs + dx*nextt;
+      endPt(1) = ys + dy*nextt;
+
+      val += ConjugateFunctionType::LineIntegralDeriv(wi, xi, startPt, endPt)*dist->Density(xInd,yInd);
 
       // we leave out the top or bottom
       if(std::abs(nextt-nextt_horz)<compTol){
@@ -333,15 +362,22 @@ double SemidiscreteOT<ConjugateFunctionType>::LineIntegral(LaguerreDiagram::Poin
       nextt = std::min(nextt_horz,nextt_vert);
     }
 
-    if((xInd<grid->NumCells(0))&&(yInd<grid->NumCells(1)))
-      val += (nextt-currt)*segLenth*dist->Density(xInd,yInd);
+    if((xInd<grid->NumCells(0))&&(yInd<grid->NumCells(1))){
+      startPt(0) = xs + dx*currt;
+      startPt(1) = ys + dy*currt;
+      endPt(0) = xs + dx*nextt;
+      endPt(1) = ys + dy*nextt;
+
+      val += ConjugateFunctionType::LineIntegralDeriv(wi, xi, startPt, endPt)*dist->Density(xInd,yInd);
+    }
 
     return val;
   }
 }
 
 template<typename ConjugateFunctionType>
-Eigen::SparseMatrix<double> SemidiscreteOT<ConjugateFunctionType>::ComputeHessian(LaguerreDiagram const& lagDiag) const
+Eigen::SparseMatrix<double> SemidiscreteOT<ConjugateFunctionType>::ComputeHessian(Eigen::VectorXd const& prices,
+                                                                                  LaguerreDiagram const& lagDiag) const
 {
   const unsigned int numCells = discrPts.cols();
   typedef Eigen::Triplet<double> T;
@@ -351,6 +387,21 @@ Eigen::SparseMatrix<double> SemidiscreteOT<ConjugateFunctionType>::ComputeHessia
      This vector is used to keep track of this sum for each cell.
   */
   Eigen::VectorXd diagVals = Eigen::VectorXd::Zero(numCells);
+
+  // For unbalanced transport, the Diagonal of the hessian has an additional term
+  for(unsigned int cellInd=0; cellInd<numCells; ++cellInd) {
+
+    auto triFunc = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2, Eigen::Vector2d const& pt3)
+      {
+        return ConjugateFunctionType::TriangularIntegralDeriv2(prices(cellInd), discrPts.col(cellInd), pt1,pt2,pt3);
+      };
+    auto rectFunc = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2)
+      {
+        return ConjugateFunctionType::RectangularIntegralDeriv2(prices(cellInd), discrPts.col(cellInd), pt1,pt2);
+      };
+
+    diagVals(cellInd) -= lagDiag.IntegrateOverCell(cellInd, triFunc, rectFunc, dist);
+  }
 
   // Hold the i,j,val triplets defining the sparse Hessian
   std::vector<T> hessVals;
@@ -365,16 +416,16 @@ Eigen::SparseMatrix<double> SemidiscreteOT<ConjugateFunctionType>::ComputeHessia
       std::tie(cellInd2, srcPt, tgtPt) = edgeTuple;
 
       // Compute the integral of the target density along the edge
-      intVal = 0.25*LineIntegral(srcPt,tgtPt)/(discrPts.col(cellInd1)-discrPts.col(cellInd2)).norm();
+      intVal = LineIntegral(prices(cellInd1), discrPts.col(cellInd1), srcPt, tgtPt)/(discrPts.col(cellInd1)-discrPts.col(cellInd2)).norm();
 
       diagVals(cellInd1) -= intVal;
 
-      hessVals.push_back(T(cellInd1,cellInd2,intVal));
+      hessVals.push_back(T(cellInd1,cellInd2,0.25*intVal));
     }
   }
 
   for(int i=0; i<numCells; ++i){
-    hessVals.push_back(T(i,i,diagVals(i)));
+    hessVals.push_back(T(i,i,0.25*diagVals(i)));
   }
 
   Eigen::SparseMatrix<double> hess(numCells,numCells);
@@ -458,7 +509,7 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT<ConjugateFunctionType>::Solve(
 
   for(int it=0; it<maxEvals; ++it) {
     auto start = std::chrono::steady_clock::now();
-    hess = ComputeHessian(*lagDiag);
+    hess = ComputeHessian(x, *lagDiag);
     hess *= -1.0;
 
     auto end = std::chrono::steady_clock::now();

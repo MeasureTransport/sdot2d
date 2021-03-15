@@ -90,6 +90,25 @@ namespace sdot{
                                                             unsigned int                           numPts,
                                                             OptionList                             opts = OptionList());
 
+    /** Given an existing Laguerre diagram, this function computes the objective
+        and gradient by integrating over each Laguerre cell.
+        @param[in] prices The current prices vector.  These must be the same
+                   prices used to construct the Laguerre diagram.
+        @param[in] lagDiag Laguerre diagram computed with the current prices
+        @return Pair containing the objective and gradient of the objective.
+    */
+    std::pair<double, Eigen::VectorXd> ComputeGradient(Eigen::VectorXd const& prices,
+                                                       LaguerreDiagram const& lagDiag) const;
+
+    /** Computes the weighted centroids, e.g.,  of each Laguerre cell. */
+    Eigen::Matrix2Xd WeightedCentroids(LaguerreDiagram const& lagDiag) const;
+
+    /** Given an existing Laguerre diagram, this function computes the Hessian by
+        integrating over each pair of Laguerre cell boundaries.
+
+    */
+    Eigen::SparseMatrix<double> ComputeHessian(Eigen::VectorXd const& prices,
+                                               LaguerreDiagram const& lagDiag) const;
   private:
 
     /** Solves the trust region subproblem using a Steihaug-CG approach.
@@ -116,26 +135,19 @@ namespace sdot{
     // The most recently constructed Laguerre diagram
     std::shared_ptr<LaguerreDiagram> lagDiag;
 
-    /** Given an existing Laguerre diagram, this function computes the objective
-        and gradient by integrating over each Laguerre cell.
-        @param[in] prices The current prices vector.  These must be the same
-                   prices used to construct the Laguerre diagram.
-        @param[in] lagDiag Laguerre diagram computed with the current prices
-        @return Pair containing the objective and gradient of the objective.
+
+
+    /**
+    Computes the integral
+    \f[
+    \int_{\partial \Omega} (F^\ast)^\prime(w_i-c(x,x_i)) u(x) dS
+    \f]
+    for a line segment \f$\partial \Omega\f$ between two cells in the Laguerre
+    diagram.
     */
-    std::pair<double, Eigen::VectorXd> ComputeGradient(Eigen::VectorXd const& prices,
-                                                       LaguerreDiagram const& lagDiag) const;
-
-    /** Computes the weighted centroids, e.g.,  of each Laguerre cell. */
-    Eigen::Matrix2Xd WeightedCentroids(LaguerreDiagram const& lagDiag) const;
-
-    /** Given an existing Laguerre diagram, this function computes the Hessian by
-        integrating over each pair of Laguerre cell boundaries.
-
-    */
-    Eigen::SparseMatrix<double> ComputeHessian(LaguerreDiagram const& lagDiag) const;
-
-    double LineIntegral(LaguerreDiagram::Point_2 const& srcPt,
+    double LineIntegral(double wi,
+                        Eigen::Ref<const Eigen::Vector2d> const& xi,
+                        LaguerreDiagram::Point_2 const& srcPt,
                         LaguerreDiagram::Point_2 const& tgtPt) const;
 
     /**
