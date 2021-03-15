@@ -10,47 +10,80 @@ namespace distances{
 
 /** @class Wasserstein2
     @ingroup Distances
-    @brief Defines the conjugate function \f$F^\ast\f$ for the standard balanced Wasserstein-2 case.
+    @details The standard Wasserstein-2 optimal transport problem is obtained
+    for a cost function \f$c(x,y)=\frac{1}{2}\|x-y\|^2\f$ and a function
+    \f[
+    F(s) = \left\{ \begin{array}{ll} 0 & \text{if } s=1\\ \infty & \text{otherwise}\end{array} \right. ,
+    \f]
+    which results in a conjugate function \f$F^\ast(z)\f$ of the simple form
+    \f[
+    F^\ast(z) = z
+    \f]
 */
 class Wasserstein2{
 public:
 
+  /** Evaluates the conjugate function \f$F^\ast(z)\f$ at a point \f$z\f$. */
   static double Evaluate(double z);
 
+  /** Evaluates the derivative of the conjugate function \f$\frac{\partial}{\partial z}F^\ast(z)\f$ at a point \f$z\f$. */
   static double Derivative(double z);
 
-  static double TriangularIntegral(double wi,
+  /**
+  Returns
+  \f[
+  \int_{\Omega_{\text{tri}}} F^\ast(w_i - c(x,x_i)) dx,
+  \f]
+  where \f$\Omega_{\text{tri}}\f$ is a triangular region defined by three corner
+  points.
+  */
+  static double TriangularIntegral(double                 wi,
                                    Eigen::Vector2d const& xi,
                                    Eigen::Vector2d const& pt1,
                                    Eigen::Vector2d const& pt2,
                                    Eigen::Vector2d const& pt3);
 
-  static double RectangularIntegral(double wi,
+   /**
+   Returns
+   \f[
+   \int_{\Omega_{\text{rect}}} F^\ast(w_i - c(x,x_i)) dx,
+   \f]
+   where \f$\Omega_{\text{rect}}\f$ is a rectangular region defined by two of
+   its corner points.  The corner on the bottom left (minx, miny) and the corner
+   on the top right (maxx, maxy).
+   */
+  static double RectangularIntegral(double                wi,
                                    Eigen::Vector2d const& xi,
                                    Eigen::Vector2d const& lowerLeft,
                                    Eigen::Vector2d const& upperRight);
 
-  static double TriangularIntegralDeriv(double wi,
+  static double TriangularIntegralDeriv(double                 wi,
                                         Eigen::Vector2d const& xi,
                                         Eigen::Vector2d const& pt1,
                                         Eigen::Vector2d const& pt2,
                                         Eigen::Vector2d const& pt3);
 
-  static double RectangularIntegralDeriv(double wi,
+  static double RectangularIntegralDeriv(double                 wi,
                                          Eigen::Vector2d const& xi,
                                          Eigen::Vector2d const& lowerLeft,
                                          Eigen::Vector2d const& upperRight);
 
-  static double TriangularIntegralDeriv2(double wi,
+  static double TriangularIntegralDeriv2(double                 wi,
                                          Eigen::Vector2d const& xi,
                                          Eigen::Vector2d const& pt1,
                                          Eigen::Vector2d const& pt2,
                                          Eigen::Vector2d const& pt3);
 
-  static double RectangularIntegralDeriv2(double wi,
+  static double RectangularIntegralDeriv2(double                 wi,
                                           Eigen::Vector2d const& xi,
                                           Eigen::Vector2d const& lowerLeft,
                                           Eigen::Vector2d const& upperRight);
+
+  static double LineIntegralDeriv(double                 wi,
+                                  Eigen::Vector2d const& xi,
+                                  Eigen::Vector2d const& pt1,
+                                  Eigen::Vector2d const& pt2);
+
 
 
 

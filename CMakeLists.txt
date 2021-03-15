@@ -1,7 +1,13 @@
 cmake_minimum_required(VERSION 3.10)
 
 # set the project name and version
-project(SemiDiscreteOT VERSION 1.0)
+project(SDOT)
+set(${CMAKE_PROJECT_NAME}_MAJOR_VERSION 0)
+set(${CMAKE_PROJECT_NAME}_MINOR_VERSION 1)
+set(${CMAKE_PROJECT_NAME}_PATCH_VERSION 0)
+set(${CMAKE_PROJECT_NAME}_VERSION ${${CMAKE_PROJECT_NAME}_MAJOR_VERSION}.${${CMAKE_PROJECT_NAME}_MINOR_VERSION}.${${CMAKE_PROJECT_NAME}_PATCH_VERSION})
+
+
 
 # specify the C++ standard
 set(CMAKE_CXX_STANDARD 14)
@@ -111,3 +117,22 @@ install(DIRECTORY src/python
 install(DIRECTORY include/SDOT
         DESTINATION "${CMAKE_INSTALL_PREFIX}/include"
 	      FILES_MATCHING PATTERN "*.h")
+
+
+
+###############################################
+# Add a target to build documentation
+###############################################
+
+find_package(Doxygen)
+if(DOXYGEN_FOUND)
+	message(STATUS "To build documentation, run 'make doc'")
+
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/doc/sdot.doxyfile.in ${CMAKE_CURRENT_BINARY_DIR}/sdot.doxyfile @ONLY)
+  add_custom_target(doc
+      COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/sdot.doxyfile
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+      COMMENT "Generating API documentation with Doxygen" VERBATIM
+  )
+
+endif(DOXYGEN_FOUND)
