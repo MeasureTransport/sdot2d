@@ -28,6 +28,10 @@ set(LibrarySources
     src/Polygon.cpp
     src/OptionUtilities.cpp
     src/Distances/Wasserstein2.cpp
+    src/Distances/QuadraticRegularization.cpp
+    src/Distances/TriangularQuadrature.cpp
+    src/Distances/RectangularQuadrature.cpp
+    src/Distances/LineQuadrature.cpp
 )
 
 # Set the source files for the python wrapper
@@ -70,6 +74,7 @@ if(GTest_FOUND)
     tests/unit/DistanceTests.cpp
     tests/unit/LaguerreDiagramTests.cpp
     tests/unit/SemiDiscreteOTTests.cpp
+    tests/unit/QuadratureTests.cpp
     tests/unit/RunUnitTests.cpp
   )
 

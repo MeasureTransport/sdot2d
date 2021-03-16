@@ -94,8 +94,6 @@ public:
                                   Eigen::Vector2d const& pt2);
 
 
-
-
 }; // class Wasserstein2
 
 }// namespace distances
