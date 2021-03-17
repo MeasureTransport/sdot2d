@@ -24,10 +24,12 @@ namespace sdot{
       @param[in] gridProbs Matrix of probabilities for each cell.  Rows correspond to X locations, columns to Y locations.
       @param[in] discrPts Matrix of discrete points.
       @param[in] discrProbs Probabilities assigned to each discrete point.
+      @param[in] unbalancedPenalty The weight on the penalties in the unbalanced setting
     */
     SemidiscreteOT(std::shared_ptr<Distribution2d> const& distIn,
                    Eigen::Matrix2Xd                const& discrPtsIn,
-                   Eigen::VectorXd                 const& discrProbsIn);
+                   Eigen::VectorXd                 const& discrProbsIn,
+                   double                                 unbalancedPenaltyIn=1);
 
     /** Returns the Semi discrete OT objective, gradient, and Hessian.
         @param[in] prices A vector containing the current prices for each discrete point
@@ -63,6 +65,16 @@ namespace sdot{
     Eigen::Matrix2Xd PointGradient(LaguerreDiagram const& lagDiag) const;
 
     Eigen::Matrix2Xd PointGradient() const;
+
+    /** Sets the weight on the marginal discrepancy penalties in the unbalanced
+        setting.  Has no impact on  the usual Wasserstein -2 balanced  case.
+    */
+    void SetPenalty(double newPenalty){unbalancedPenalty=newPenalty;};
+
+    /** Gets the weight on the marginal discrepancy penalties in the unbalanced
+        setting.
+    */
+    double GetPenalty() const{return unbalancedPenalty;};
 
     /** Solves the dual OT problem for the prices.  Uses a Trust region newton method.
     */
@@ -129,6 +141,9 @@ namespace sdot{
 
     Eigen::Matrix2Xd discrPts;
     Eigen::VectorXd  discrProbs;
+
+    /** Penalty on the marginal discrepancies for the unbalanced formulations. */
+    double unbalancedPenalty=1;
 
     Eigen::Matrix2Xd domain; // <- Points defining a polygon surrounding the domain of interest
 

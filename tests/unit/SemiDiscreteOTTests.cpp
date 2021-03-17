@@ -155,10 +155,16 @@ TEST(SemiDiscreteOT, Construction_QuadraticRegularization)
   auto grid = std::make_shared<RegularGrid>(0.0, 0.0, 1.0, 1.0, 1, 1);
   auto dist = std::make_shared<DiscretizedDistribution>(grid, Eigen::MatrixXd::Ones(1,1));
 
-  SemidiscreteOT<QuadraticRegularization> solver(dist, pts, probs);
-  solver.Solve(2.0*Eigen::VectorXd::Ones(pts.cols()));
+  SemidiscreteOT<QuadraticRegularization> solver(dist, pts, probs, 10.0);
+  solver.Solve(Eigen::VectorXd::Ones(pts.cols()));
 
   auto diag = solver.Diagram();
   assert(diag != nullptr);
 
+  EXPECT_GT(diag->CellArea(0, dist), diag->CellArea(1, dist));
+  EXPECT_LT(0.5, diag->CellArea(0, dist));
+  EXPECT_GT(0.5, diag->CellArea(1, dist));
+
+  std::cout << "Cell 1 Prob: " << diag->CellArea(0, dist) << " vs " << probs(0) <<std::endl;
+  std::cout << "Cell 2 Prob: " << diag->CellArea(1, dist) << " vs " << probs(1) <<std::endl;
 }

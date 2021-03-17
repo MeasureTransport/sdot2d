@@ -28,13 +28,13 @@ class QuadraticRegularization{
 public:
 
   /** Evaluates the conjugate function \f$F^\ast(z)\f$ at a point \f$z\f$. */
-  static double Evaluate(double z);
+  static double Evaluate(double z, double penaltyCoeff=1);
 
   /** Evaluates the derivative of the conjugate function \f$\frac{\partial}{\partial z}F^\ast(z)\f$ at a point \f$z\f$. */
-  static double Derivative(double z);
+  static double Derivative(double z, double penaltyCoeff=1);
 
   /** Evaluates the second derivative of the conjugate function \f$\frac{\partial}{\partial z}F^\ast(z)\f$ at a point \f$z\f$. */
-  static double Derivative2(double z);
+  static double Derivative2(double z, double penaltyCoeff=1);
 
 
   /**
@@ -51,7 +51,8 @@ public:
                                    Eigen::Ref<const Eigen::Vector2d> const& xi,
                                    Eigen::Vector2d const& pt1,
                                    Eigen::Vector2d const& pt2,
-                                   Eigen::Vector2d const& pt3);
+                                   Eigen::Vector2d const& pt3,
+                                   double penaltyCoeff=1);
 
    /**
    Returns
@@ -65,31 +66,36 @@ public:
      Uses numerical quadrature to approximate the integral.
    */
   static double RectangularIntegral(double                wi,
-                                   Eigen::Ref<const Eigen::Vector2d> const& xi,
-                                   Eigen::Vector2d const& lowerLeft,
-                                   Eigen::Vector2d const& upperRight);
+                                    Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                    Eigen::Vector2d const& lowerLeft,
+                                    Eigen::Vector2d const& upperRight,
+                                    double penaltyCoeff=1);
 
   static double TriangularIntegralDeriv(double                 wi,
                                         Eigen::Ref<const Eigen::Vector2d> const& xi,
                                         Eigen::Vector2d const& pt1,
                                         Eigen::Vector2d const& pt2,
-                                        Eigen::Vector2d const& pt3);
+                                        Eigen::Vector2d const& pt3,
+                                        double penaltyCoeff=1);
 
   static double RectangularIntegralDeriv(double                 wi,
                                          Eigen::Ref<const Eigen::Vector2d> const& xi,
                                          Eigen::Vector2d const& lowerLeft,
-                                         Eigen::Vector2d const& upperRight);
+                                         Eigen::Vector2d const& upperRight,
+                                         double penaltyCoeff=1);
 
   static double TriangularIntegralDeriv2(double                 wi,
                                          Eigen::Ref<const Eigen::Vector2d> const& xi,
                                          Eigen::Vector2d const& pt1,
                                          Eigen::Vector2d const& pt2,
-                                         Eigen::Vector2d const& pt3);
+                                         Eigen::Vector2d const& pt3,
+                                         double penaltyCoeff=1);
 
   static double RectangularIntegralDeriv2(double                 wi,
                                           Eigen::Ref<const Eigen::Vector2d> const& xi,
                                           Eigen::Vector2d const& lowerLeft,
-                                          Eigen::Vector2d const& upperRight);
+                                          Eigen::Vector2d const& upperRight,
+                                          double penaltyCoeff=1);
 
   /**
   Returns
@@ -103,7 +109,8 @@ public:
   static double LineIntegralDeriv(double                 wi,
                                   Eigen::Ref<const Eigen::Vector2d> const& xi,
                                   Eigen::Vector2d const& pt1,
-                                  Eigen::Vector2d const& pt2);
+                                  Eigen::Vector2d const& pt2,
+                                  double penaltyCoeff=1);
 
 
   /** Uses quadrature to compute an integral of \f$ f(w_i-c(x,x_i))\f$ over a triangle. */
@@ -113,7 +120,8 @@ public:
                                           Eigen::Ref<const Eigen::Vector2d> const& xi,
                                           Eigen::Vector2d const& pt1,
                                           Eigen::Vector2d const& pt2,
-                                          Eigen::Vector2d const& pt3)
+                                          Eigen::Vector2d const& pt3,
+                                          double penaltyCoeff=1)
   {
       Eigen::Matrix2d A(2,2); // 2x2 matrix transforming reference coordinates to spatial coordinates
 
@@ -130,7 +138,7 @@ public:
       Eigen::Vector2d testPt(2);
       for(int i=0; i<quadWts.size(); ++i){
         testPt = pt1 + A*quadPts.col(i); // map pt in reference triangle to real coordinates
-        vals(i) = f(wi - (testPt - xi).squaredNorm());
+        vals(i) = f(wi - (testPt - xi).squaredNorm(), penaltyCoeff);
       }
 
       return jacDet*quadWts.dot(vals);
@@ -142,7 +150,8 @@ public:
                                           double                 wi,
                                           Eigen::Ref<const Eigen::Vector2d> const& xi,
                                           Eigen::Vector2d const& pt1,
-                                          Eigen::Vector2d const& pt2)
+                                          Eigen::Vector2d const& pt2,
+                                          double penaltyCoeff=1)
   {
       Eigen::Vector2d diff = pt2-pt1;
       double segLength = diff.norm();
@@ -155,7 +164,7 @@ public:
       Eigen::Vector2d testPt(2);
       for(int i=0; i<quadWts.size(); ++i){
         testPt = pt1 + diff*quadPts(i); // map pt in reference triangle to real coordinates
-        vals(i) = f(wi - (testPt - xi).squaredNorm());
+        vals(i) = f(wi - (testPt - xi).squaredNorm(), penaltyCoeff);
       }
 
       return segLength*quadWts.dot(vals);
@@ -167,7 +176,8 @@ public:
                                            double                 wi,
                                            Eigen::Ref<const Eigen::Vector2d> const& xi,
                                            Eigen::Vector2d const& pt1,
-                                           Eigen::Vector2d const& pt2)
+                                           Eigen::Vector2d const& pt2,
+                                           double penaltyCoeff=1)
   {
 
       Eigen::Matrix2Xd quadPts;
@@ -183,7 +193,7 @@ public:
 
         testPt = pt1 + scale.asDiagonal()*quadPts.col(i); // map pt in reference triangle to real coordinates
 
-        vals(i) = f(wi - (testPt - xi).squaredNorm());
+        vals(i) = f(wi - (testPt - xi).squaredNorm(), penaltyCoeff);
       }
 
       return scale.prod()*quadWts.dot(vals);

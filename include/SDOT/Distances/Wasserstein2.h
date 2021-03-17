@@ -24,13 +24,13 @@ class Wasserstein2{
 public:
 
   /** Evaluates the conjugate function \f$F^\ast(z)\f$ at a point \f$z\f$. */
-  static double Evaluate(double z);
+  static double Evaluate(double z, double penaltyCoeff=1);
 
   /** Evaluates the derivative of the conjugate function \f$\frac{\partial}{\partial z}F^\ast(z)\f$ at a point \f$z\f$. */
-  static double Derivative(double z);
+  static double Derivative(double z, double penaltyCoeff=1);
 
   /** Evaluates the second derivative of the conjugate function \f$\frac{\partial}{\partial z}F^\ast(z)\f$ at a point \f$z\f$. */
-  static double Derivative2(double z);
+  static double Derivative2(double z, double penaltyCoeff=1);
 
   /**
   Returns
@@ -44,7 +44,8 @@ public:
                                    Eigen::Ref<const Eigen::Vector2d> const& xi,
                                    Eigen::Vector2d const& pt1,
                                    Eigen::Vector2d const& pt2,
-                                   Eigen::Vector2d const& pt3);
+                                   Eigen::Vector2d const& pt3,
+                                   double penaltyCoeff=1);
 
    /**
    Returns
@@ -58,29 +59,34 @@ public:
   static double RectangularIntegral(double                wi,
                                    Eigen::Ref<const Eigen::Vector2d> const& xi,
                                    Eigen::Vector2d const& lowerLeft,
-                                   Eigen::Vector2d const& upperRight);
+                                   Eigen::Vector2d const& upperRight,
+                                   double penaltyCoeff=1);
 
   static double TriangularIntegralDeriv(double                 wi,
                                         Eigen::Ref<const Eigen::Vector2d> const& xi,
                                         Eigen::Vector2d const& pt1,
                                         Eigen::Vector2d const& pt2,
-                                        Eigen::Vector2d const& pt3);
+                                        Eigen::Vector2d const& pt3,
+                                        double penaltyCoeff=1);
 
   static double RectangularIntegralDeriv(double                 wi,
                                          Eigen::Ref<const Eigen::Vector2d> const& xi,
                                          Eigen::Vector2d const& lowerLeft,
-                                         Eigen::Vector2d const& upperRight);
+                                         Eigen::Vector2d const& upperRight,
+                                         double penaltyCoeff=1);
 
   static double TriangularIntegralDeriv2(double                 wi,
                                          Eigen::Ref<const Eigen::Vector2d> const& xi,
                                          Eigen::Vector2d const& pt1,
                                          Eigen::Vector2d const& pt2,
-                                         Eigen::Vector2d const& pt3);
+                                         Eigen::Vector2d const& pt3,
+                                         double penaltyCoeff=1);
 
   static double RectangularIntegralDeriv2(double                 wi,
                                           Eigen::Ref<const Eigen::Vector2d> const& xi,
                                           Eigen::Vector2d const& lowerLeft,
-                                          Eigen::Vector2d const& upperRight);
+                                          Eigen::Vector2d const& upperRight,
+                                          double penaltyCoeff=1);
 
   /**
   Returns
@@ -94,7 +100,8 @@ public:
   static double LineIntegralDeriv(double                 wi,
                                   Eigen::Ref<const Eigen::Vector2d> const& xi,
                                   Eigen::Vector2d const& pt1,
-                                  Eigen::Vector2d const& pt2);
+                                  Eigen::Vector2d const& pt2,
+                                  double penaltyCoeff=1);
 
 
 }; // class Wasserstein2

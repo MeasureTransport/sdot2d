@@ -4,15 +4,15 @@ using namespace sdot;
 using namespace sdot::distances;
 
 
-double Wasserstein2::Evaluate(double z){
+double Wasserstein2::Evaluate(double z, double penaltyCoeff){
   return z;
 };
 
-double Wasserstein2::Derivative(double z){
+double Wasserstein2::Derivative(double z, double penaltyCoeff){
   return 1;
 };
 
-double Wasserstein2::Derivative2(double z){
+double Wasserstein2::Derivative2(double z, double penaltyCoeff){
   return 0.0;
 };
 
@@ -20,7 +20,8 @@ double Wasserstein2::TriangularIntegral(double wi,
                                         Eigen::Ref<const Eigen::Vector2d> const& xi,
                                         Eigen::Vector2d const& pt1,
                                         Eigen::Vector2d const& pt2,
-                                        Eigen::Vector2d const& pt3)
+                                        Eigen::Vector2d const& pt3,
+                                        double penaltyCoeff)
 {
 
   double triInt = (1.0/2.0)*std::pow(xi[0], 2) - 1.0/3.0*xi[0]*pt1[0] - 1.0/3.0*xi[0]*pt2[0] - 1.0/3.0*xi[0]*pt3[0] + (1.0/2.0)*std::pow(xi[1], 2) - 1.0/3.0*xi[1]*pt1[1] - 1.0/3.0*xi[1]*pt2[1] - 1.0/3.0*xi[1]*pt3[1] + (1.0/12.0)*std::pow(pt1[0], 2) + (1.0/12.0)*pt1[0]*pt2[0] + (1.0/12.0)*pt1[0]*pt3[0] + (1.0/12.0)*std::pow(pt2[0], 2) + (1.0/12.0)*pt2[0]*pt3[0] + (1.0/12.0)*std::pow(pt3[0], 2) + (1.0/12.0)*std::pow(pt1[1], 2) + (1.0/12.0)*pt1[1]*pt2[1] + (1.0/12.0)*pt1[1]*pt3[1] + (1.0/12.0)*std::pow(pt2[1], 2) + (1.0/12.0)*pt2[1]*pt3[1] + (1.0/12.0)*std::pow(pt3[1], 2);
@@ -32,7 +33,8 @@ double Wasserstein2::TriangularIntegral(double wi,
 double Wasserstein2::RectangularIntegral(double wi,
                                          Eigen::Ref<const Eigen::Vector2d> const& xi,
                                          Eigen::Vector2d const& bottomLeft,
-                                         Eigen::Vector2d const& topRight)
+                                         Eigen::Vector2d const& topRight,
+                                         double penaltyCoeff)
 {
   double rectInt = (1.0/3.0)*(topRight[1]-bottomLeft[1])*(std::pow(topRight[0]-xi[0],3.0)-std::pow(bottomLeft[0]-xi[0],3.0))
                  + (1.0/3.0)*(topRight[0]-bottomLeft[0])*(std::pow(topRight[1]-xi[1],3.0)-std::pow(bottomLeft[1]-xi[1],3.0));
@@ -44,7 +46,8 @@ double Wasserstein2::TriangularIntegralDeriv(double wi,
                                              Eigen::Ref<const Eigen::Vector2d> const& xi,
                                              Eigen::Vector2d const& pt1,
                                              Eigen::Vector2d const& pt2,
-                                             Eigen::Vector2d const& pt3)
+                                             Eigen::Vector2d const& pt3,
+                                             double penaltyCoeff)
 {
   return 0.5*std::abs((pt2[0]*pt1[1]-pt1[0]*pt2[1])+(pt3[0]*pt2[1]-pt2[0]*pt3[1])+(pt1[0]*pt3[1]-pt3[0]*pt1[1]));
 }
@@ -52,7 +55,8 @@ double Wasserstein2::TriangularIntegralDeriv(double wi,
 double Wasserstein2::RectangularIntegralDeriv(double wi,
                                               Eigen::Ref<const Eigen::Vector2d> const& xi,
                                               Eigen::Vector2d const& bottomLeft,
-                                              Eigen::Vector2d const& topRight)
+                                              Eigen::Vector2d const& topRight,
+                                              double penaltyCoeff)
 {
   return std::abs( (topRight[0]-bottomLeft[0])*(topRight[1]-bottomLeft[1]) );
 }
@@ -60,7 +64,8 @@ double Wasserstein2::RectangularIntegralDeriv(double wi,
 double Wasserstein2::LineIntegralDeriv(double                 wi,
                                        Eigen::Ref<const Eigen::Vector2d> const& xi,
                                        Eigen::Vector2d const& pt1,
-                                       Eigen::Vector2d const& pt2)
+                                       Eigen::Vector2d const& pt2,
+                                       double penaltyCoeff)
 {
     return (pt1-pt2).norm();
 }
@@ -70,7 +75,8 @@ double Wasserstein2::TriangularIntegralDeriv2(double                 wi,
                                               Eigen::Ref<const Eigen::Vector2d> const& xi,
                                               Eigen::Vector2d const& pt1,
                                               Eigen::Vector2d const& pt2,
-                                              Eigen::Vector2d const& pt3)
+                                              Eigen::Vector2d const& pt3,
+                                              double penaltyCoeff)
 {
   return 0;
 }
@@ -78,7 +84,8 @@ double Wasserstein2::TriangularIntegralDeriv2(double                 wi,
 double Wasserstein2::RectangularIntegralDeriv2(double                 wi,
                                                Eigen::Ref<const Eigen::Vector2d> const& xi,
                                                Eigen::Vector2d const& lowerLeft,
-                                               Eigen::Vector2d const& upperRight)
+                                               Eigen::Vector2d const& upperRight,
+                                               double penaltyCoeff)
 {
   return 0;
 }

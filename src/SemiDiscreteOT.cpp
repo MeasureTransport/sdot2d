@@ -15,13 +15,17 @@ using namespace sdot;
 template<typename ConjugateFunctionType>
 SemidiscreteOT<ConjugateFunctionType>::SemidiscreteOT(std::shared_ptr<Distribution2d> const& distIn,
                                Eigen::Matrix2Xd                const& discrPtsIn,
-                               Eigen::VectorXd                 const& discrProbsIn) : dist(distIn),
+                               Eigen::VectorXd                 const& discrProbsIn,
+                               double                                 unbalancedPenaltyIn) : dist(distIn),
                                                                                       grid(distIn->Grid()),
                                                                                       discrPts(discrPtsIn),
-                                                                                      discrProbs(discrProbsIn)
+                                                                                      discrProbs(discrProbsIn),
+                                                                                      unbalancedPenalty(unbalancedPenaltyIn)
 {
   if(discrPtsIn.cols()!=discrProbsIn.size())
   SDOT_ASSERT(discrPtsIn.cols()==discrProbsIn.size());
+
+  SDOT_ASSERT(unbalancedPenalty>0);
 
   // Check to make sure all the points are inside the grid domain
   for(unsigned int i=0; i<discrPts.cols(); ++i){
@@ -121,30 +125,30 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT<ConjugateFunctionType>::Compute
     //
     // double weightedArea  = lagDiag.IntegrateOverCell(cellInd, triArea, rectArea, dist);
 
-    objParts(cellInd) = -ConjugateFunctionType::Evaluate(-prices(cellInd))*discrProbs(cellInd);// - prices(cellInd)*weightedArea;
+    objParts(cellInd) = -ConjugateFunctionType::Evaluate(-prices(cellInd), unbalancedPenalty)*discrProbs(cellInd);// - prices(cellInd)*weightedArea;
 
-    gradient(cellInd) = ConjugateFunctionType::Derivative(-prices(cellInd))*discrProbs(cellInd);
+    gradient(cellInd) = ConjugateFunctionType::Derivative(-prices(cellInd), unbalancedPenalty)*discrProbs(cellInd);
 
     // if(weightedArea>0){
 
       auto triFunc = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2, Eigen::Vector2d const& pt3)
         {
-          return ConjugateFunctionType::TriangularIntegral(prices(cellInd), discrPts.col(cellInd), pt1,pt2,pt3);
+          return ConjugateFunctionType::TriangularIntegral(prices(cellInd), discrPts.col(cellInd), pt1,pt2,pt3,unbalancedPenalty);
         };
       auto rectFunc = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2)
         {
-          return ConjugateFunctionType::RectangularIntegral(prices(cellInd), discrPts.col(cellInd), pt1,pt2);
+          return ConjugateFunctionType::RectangularIntegral(prices(cellInd), discrPts.col(cellInd), pt1,pt2,unbalancedPenalty);
         };
 
       objParts(cellInd) += -lagDiag.IntegrateOverCell(cellInd, triFunc, rectFunc, dist);
 
       auto triFuncDeriv = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2, Eigen::Vector2d const& pt3)
         {
-          return ConjugateFunctionType::TriangularIntegralDeriv(prices(cellInd), discrPts.col(cellInd), pt1,pt2,pt3);
+          return ConjugateFunctionType::TriangularIntegralDeriv(prices(cellInd), discrPts.col(cellInd), pt1,pt2,pt3,unbalancedPenalty);
         };
       auto rectFuncDeriv = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2)
         {
-          return ConjugateFunctionType::RectangularIntegralDeriv(prices(cellInd), discrPts.col(cellInd), pt1,pt2);
+          return ConjugateFunctionType::RectangularIntegralDeriv(prices(cellInd), discrPts.col(cellInd), pt1,pt2,unbalancedPenalty);
         };
 
       gradient(cellInd) += -lagDiag.IntegrateOverCell(cellInd, triFuncDeriv, rectFuncDeriv, dist); //-weightedArea;
@@ -222,7 +226,7 @@ double SemidiscreteOT<ConjugateFunctionType>::LineIntegral(double wi,
       startPt(1) = currY;
       endPt(1) = nextY;
 
-      val += ConjugateFunctionType::LineIntegralDeriv(wi,xi, startPt, endPt)*dist->Density(xInd,yInd);
+      val += ConjugateFunctionType::LineIntegralDeriv(wi,xi, startPt, endPt, unbalancedPenalty)*dist->Density(xInd,yInd);
 
       yInd++;
       currY = nextY;
@@ -232,7 +236,7 @@ double SemidiscreteOT<ConjugateFunctionType>::LineIntegral(double wi,
     startPt(1) = currY;
     endPt(1) = maxY;
 
-    val += ConjugateFunctionType::LineIntegralDeriv(wi, xi, startPt, endPt)*dist->Density(xInd,yInd);
+    val += ConjugateFunctionType::LineIntegralDeriv(wi, xi, startPt, endPt, unbalancedPenalty)*dist->Density(xInd,yInd);
 
     return val;
 
@@ -265,7 +269,7 @@ double SemidiscreteOT<ConjugateFunctionType>::LineIntegral(double wi,
       startPt(0) = currX;
       endPt(0) = nextX;
 
-      val += ConjugateFunctionType::LineIntegralDeriv(wi, xi, startPt, endPt)*dist->Density(xInd,yInd);
+      val += ConjugateFunctionType::LineIntegralDeriv(wi, xi, startPt, endPt, unbalancedPenalty)*dist->Density(xInd,yInd);
 
       xInd++;
       currX = nextX;
@@ -275,7 +279,7 @@ double SemidiscreteOT<ConjugateFunctionType>::LineIntegral(double wi,
     startPt(0) = currX;
     endPt(0) = maxX;
 
-    val += ConjugateFunctionType::LineIntegralDeriv(wi, xi, startPt, endPt)*dist->Density(xInd,yInd);
+    val += ConjugateFunctionType::LineIntegralDeriv(wi, xi, startPt, endPt, unbalancedPenalty)*dist->Density(xInd,yInd);
 
     return val;
 
@@ -340,7 +344,7 @@ double SemidiscreteOT<ConjugateFunctionType>::LineIntegral(double wi,
       endPt(0) = xs + dx*nextt;
       endPt(1) = ys + dy*nextt;
 
-      val += ConjugateFunctionType::LineIntegralDeriv(wi, xi, startPt, endPt)*dist->Density(xInd,yInd);
+      val += ConjugateFunctionType::LineIntegralDeriv(wi, xi, startPt, endPt, unbalancedPenalty)*dist->Density(xInd,yInd);
 
       // we leave out the top or bottom
       if(std::abs(nextt-nextt_horz)<compTol){
@@ -369,7 +373,7 @@ double SemidiscreteOT<ConjugateFunctionType>::LineIntegral(double wi,
       endPt(0) = xs + dx*nextt;
       endPt(1) = ys + dy*nextt;
 
-      val += ConjugateFunctionType::LineIntegralDeriv(wi, xi, startPt, endPt)*dist->Density(xInd,yInd);
+      val += ConjugateFunctionType::LineIntegralDeriv(wi, xi, startPt, endPt, unbalancedPenalty)*dist->Density(xInd,yInd);
     }
 
     return val;
@@ -392,15 +396,15 @@ Eigen::SparseMatrix<double> SemidiscreteOT<ConjugateFunctionType>::ComputeHessia
   // For unbalanced transport, the Diagonal of the hessian has an additional term
   for(unsigned int cellInd=0; cellInd<numCells; ++cellInd) {
 
-    diagVals(cellInd) -= ConjugateFunctionType::Derivative2(-prices(cellInd))*discrProbs(cellInd);
+    diagVals(cellInd) -= ConjugateFunctionType::Derivative2(-prices(cellInd), unbalancedPenalty)*discrProbs(cellInd);
 
     auto triFunc = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2, Eigen::Vector2d const& pt3)
       {
-        return ConjugateFunctionType::TriangularIntegralDeriv2(prices(cellInd), discrPts.col(cellInd), pt1,pt2,pt3);
+        return ConjugateFunctionType::TriangularIntegralDeriv2(prices(cellInd), discrPts.col(cellInd), pt1,pt2,pt3, unbalancedPenalty);
       };
     auto rectFunc = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2)
       {
-        return ConjugateFunctionType::RectangularIntegralDeriv2(prices(cellInd), discrPts.col(cellInd), pt1,pt2);
+        return ConjugateFunctionType::RectangularIntegralDeriv2(prices(cellInd), discrPts.col(cellInd), pt1,pt2, unbalancedPenalty);
       };
 
     diagVals(cellInd) -= lagDiag.IntegrateOverCell(cellInd, triFunc, rectFunc, dist);
