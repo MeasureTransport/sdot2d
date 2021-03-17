@@ -201,6 +201,7 @@ TEST(SemiDiscreteOT, Construction_QuadraticRegularization)
 
   // Check the point graddient
   Eigen::Matrix2Xd pointGrad = solver.PointGradient();
+  Eigen::SparseMatrix<double> pointHess = solver.PointHessian();
 
   Eigen::VectorXd stepDir = Eigen::VectorXd::Random(2*pts.cols());
   stepDir /= stepDir.norm();
@@ -212,8 +213,19 @@ TEST(SemiDiscreteOT, Construction_QuadraticRegularization)
   Eigen::VectorXd optPrices2;
   double obj2;
   std::tie(optPrices2,obj2) = solver2.Solve(Eigen::VectorXd::Ones(pts.cols()), opts);
+  Eigen::Matrix2Xd pointGrad2 = solver2.PointGradient();
 
   double fdDeriv = (obj2-obj)/stepSize;
   double dirDeriv = Eigen::Map<Eigen::VectorXd>(pointGrad.data(), 2*pts.cols()).dot(stepDir);
   EXPECT_NEAR(fdDeriv, dirDeriv, 1e-5);
+
+  Eigen::MatrixXd hessActFD = (pointGrad2-pointGrad)/stepSize;
+
+  Eigen::VectorXd hessAct = pointHess*stepDir;
+
+  EXPECT_NEAR(hessActFD(0,0), hessAct(0), 2e-2);
+  EXPECT_NEAR(hessActFD(1,0), hessAct(1), 2e-2);
+  EXPECT_NEAR(hessActFD(0,1), hessAct(2), 2e-2);
+  EXPECT_NEAR(hessActFD(1,1), hessAct(3), 2e-2);
+
 }

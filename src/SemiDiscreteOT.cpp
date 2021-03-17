@@ -128,7 +128,7 @@ Eigen::SparseMatrix<double> SemidiscreteOT<ConjugateFunctionType>::PointHessian(
         return ConjugateFunctionType::RectangularIntegralPointHessDiag(prices(cellInd), discrPts.col(cellInd), pt1,pt2, unbalancedPenalty);
       };
 
-    intVal = lagDiag.IntegrateOverCell(cellInd, triFunc, rectFunc, dist);
+    intVal = -1.0*lagDiag.IntegrateOverCell(cellInd, triFunc, rectFunc, dist);
     hessVals.push_back(T(2*cellInd,2*cellInd,intVal(0,0)));
     hessVals.push_back(T(2*cellInd,2*cellInd+1,intVal(0,1)));
     hessVals.push_back(T(2*cellInd+1,2*cellInd,intVal(1,0)));
@@ -166,7 +166,7 @@ Eigen::SparseMatrix<double> SemidiscreteOT<ConjugateFunctionType>::PointHessian(
     }
   }
 
-  Eigen::SparseMatrix<double> hess(numCells,numCells);
+  Eigen::SparseMatrix<double> hess(2*numCells,2*numCells);
   hess.setFromTriplets(hessVals.begin(), hessVals.end());
 
   return hess;
