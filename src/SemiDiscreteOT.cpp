@@ -106,6 +106,76 @@ Eigen::Matrix2Xd SemidiscreteOT<ConjugateFunctionType>::PointGradient(Eigen::Vec
 }
 
 template<typename ConjugateFunctionType>
+Eigen::SparseMatrix<double> SemidiscreteOT<ConjugateFunctionType>::PointHessian(Eigen::VectorXd const& prices,
+                                                                                LaguerreDiagram const& lagDiag) const
+{
+  return Eigen::SparseMatrix<double>();
+  //
+  // const unsigned int numCells = discrPts.cols();
+  // typedef Eigen::Triplet<double> T;
+  //
+  // Eigen::VectorXd diagVals = Eigen::VectorXd::Zero(2*numCells);
+  //
+  // // For unbalanced transport, the Diagonal of the hessian has an additional term
+  // for(unsigned int cellInd=0; cellInd<numCells; ++cellInd) {
+  //
+  //   auto triFunc = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2, Eigen::Vector2d const& pt3)
+  //     {
+  //       return ConjugateFunctionType::TriangularIntegralPointHessDiag(prices(cellInd), discrPts.col(cellInd), pt1,pt2,pt3, unbalancedPenalty);
+  //     };
+  //   auto rectFunc = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2)
+  //     {
+  //       return ConjugateFunctionType::RectangularIntegralPointHessDiag(prices(cellInd), discrPts.col(cellInd), pt1,pt2, unbalancedPenalty);
+  //     };
+  //
+  //   diagVals.segment(2*cellInd,2) = lagDiag.IntegrateOverCell(cellInd, triFunc, rectFunc, dist);
+  // }
+  //
+  // ///////
+  // // Off-diagonal parts
+  //
+  // // Hold the i,j,val triplets defining the sparse Hessian
+  // std::vector<T> hessVals;
+  //
+  // Eigen::Matrix2d intVal;
+  // unsigned int cellInd2;
+  // LaguerreDiagram::Point_2 srcPt, tgtPt;
+  //
+  // for(unsigned int cellInd1=0; cellInd1<numCells; ++cellInd1){
+  //
+  //   for(auto edgeTuple : lagDiag.InternalEdges(cellInd1)){
+  //     std::tie(cellInd2, srcPt, tgtPt) = edgeTuple;
+  //
+  //     // Compute the integral of the target density along the edge
+  //     auto func = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2)
+  //     {
+  //       return ConjugateFunctionType::LineIntegralDeriv(prices(cellInd1), discrPts.col(cellInd1), pt1, pt2, unbalancedPenalty);
+  //     }
+  //     intVal = LineIntegral(func, srcPt, tgtPt)/(discrPts.col(cellInd1)-discrPts.col(cellInd2)).norm();
+  //
+  //     diagVals(cellInd1) -= intVal;
+  //     hessVals.push_back(T(cellInd1,cellInd2,intVal));
+  //   }
+  // }
+  //
+  // for(int i=0; i<numCells; ++i){
+  //   hessVals.push_back(T(i,i, diagVals(i)));
+  // }
+  //
+  // Eigen::SparseMatrix<double> hess(numCells,numCells);
+  // hess.setFromTriplets(hessVals.begin(), hessVals.end());
+  //
+  // return hess;
+
+}
+
+template<typename ConjugateFunctionType>
+Eigen::SparseMatrix<double> SemidiscreteOT<ConjugateFunctionType>::PointHessian() const
+{
+  return PointHessian(optPrices, *lagDiag);
+}
+
+template<typename ConjugateFunctionType>
 std::pair<double,Eigen::VectorXd> SemidiscreteOT<ConjugateFunctionType>::ComputeGradient(Eigen::VectorXd const& prices,
                                                                                          LaguerreDiagram const& lagDiag) const
 {
@@ -197,205 +267,6 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT<ConjugateFunctionType>::Compute
 
 
 template<typename ConjugateFunctionType>
-double SemidiscreteOT<ConjugateFunctionType>::LineIntegral(double wi,
-                                                           Eigen::Ref<const Eigen::Vector2d> const& xi,
-                                                           LaguerreDiagram::Point_2 const& srcPt,
-                                                           LaguerreDiagram::Point_2 const& tgtPt) const
-{
-  const double compTol = 1e-11;
-
-  double xs = CGAL::to_double(srcPt.x());
-  double ys = CGAL::to_double(srcPt.y());
-  double xt = CGAL::to_double(tgtPt.x());
-  double yt = CGAL::to_double(tgtPt.y());
-
-  // Points on either end of a line segment
-  Eigen::Vector2d startPt(2), endPt(2);
-
-  // if the edge is vertical...
-  if(std::abs(xt-xs)<compTol){
-
-    startPt(0) = xs;
-    endPt(0) = xs;
-
-    // Assume we are working from bottom to top
-    if(yt<ys){
-      std::swap(xt,xs);
-      std::swap(yt,ys);
-    }
-
-    double val = 0.0;
-    unsigned int xInd = grid->LeftNode(xs);
-    unsigned int yInd = grid->BottomNode(ys);
-    const double maxY = CGAL::to_double(yt);
-
-    double currY = CGAL::to_double( ys );
-    double nextY = grid->TopNode(ys);
-
-    // If the source point is on a boundary...
-    if(std::abs(nextY-currY)<compTol)
-      nextY += grid->dy;
-
-
-    while(nextY<maxY-compTol){
-      startPt(1) = currY;
-      endPt(1) = nextY;
-
-      val += ConjugateFunctionType::LineIntegralDeriv(wi,xi, startPt, endPt, unbalancedPenalty)*dist->Density(xInd,yInd);
-
-      yInd++;
-      currY = nextY;
-      nextY = currY+grid->dy;
-    }
-
-    startPt(1) = currY;
-    endPt(1) = maxY;
-
-    val += ConjugateFunctionType::LineIntegralDeriv(wi, xi, startPt, endPt, unbalancedPenalty)*dist->Density(xInd,yInd);
-
-    return val;
-
-  // If the edge is horizontal
-  }else if(std::abs(yt-ys)<compTol){
-
-    startPt(1) = ys;
-    endPt(1) = ys;
-
-    // Assume we are working from left to right and swap direction if we're not
-    if(xt<xs){
-      std::swap(xt,xs);
-      std::swap(yt,ys);
-    }
-
-    double val = 0.0;
-    unsigned int xInd = grid->LeftNode(xs);
-    unsigned int yInd = grid->BottomNode(ys);
-
-    const double maxX = CGAL::to_double(xt);
-
-    double currX = CGAL::to_double( xs );
-    double nextX = grid->RightNode(xs);
-
-    // If the source is on a boundary...
-    if(std::abs(nextX-currX)<compTol)
-      nextX += grid->dx;
-
-    while(nextX<maxX-compTol){
-      startPt(0) = currX;
-      endPt(0) = nextX;
-
-      val += ConjugateFunctionType::LineIntegralDeriv(wi, xi, startPt, endPt, unbalancedPenalty)*dist->Density(xInd,yInd);
-
-      xInd++;
-      currX = nextX;
-      nextX = currX+grid->dx;
-    }
-
-    startPt(0) = currX;
-    endPt(0) = maxX;
-
-    val += ConjugateFunctionType::LineIntegralDeriv(wi, xi, startPt, endPt, unbalancedPenalty)*dist->Density(xInd,yInd);
-
-    return val;
-
-  // Otherwise there is a nonzero finite slope
-  }else{
-
-    // Assume we are working from left to right and swap direction if we're not
-    if(xt<xs){
-      std::swap(xt,xs);
-      std::swap(yt,ys);
-    }
-
-    double val = 0.0;
-
-    double dy = yt-ys;
-    double dx = xt-xs;
-
-    // The length of the source -> target line segment
-    double segLenth = std::sqrt(dy*dy+dx*dx);
-
-    /* We parameterize the line segment as ps + t*(pt-ps), where ps is the
-       source point and target is the target node.  As we walk along the line
-       segment and compute the integral,
-       - currt holds the current position along the line
-       - nextt_vert holds the next value of t where the line segment crosses a vertical grid line
-       - nextt_horz holds the next value of t where the line segment crosses a horizontal grid line
-       - nextt holds the minimum of nextt_vert and nextt_horz
-    */
-    double currt = 0.0;
-    double nextt_vert, nextt_horz;
-    double nextt;
-
-
-    // Compute the slope of the line
-    bool posSlope = dy>0;
-
-    // Get the starting grid cells
-    unsigned int xInd = grid->LeftNode(xs);
-    unsigned int yInd = grid->BottomNode(ys);
-
-    // Handle situations where the source starts on a boundary
-    if(std::abs(yInd*grid->dy+grid->yMin - ys)<compTol){
-      if(yt<ys-compTol){
-        yInd--;
-      }
-    }
-
-    nextt_vert = std::min(1.0, ( (xInd+1)*grid->dx + grid->xMin - xs) / dx);
-
-    if(posSlope){
-      nextt_horz = std::min(1.0, ( (yInd+1.0)*grid->dy + grid->yMin - ys) / dy);
-    }else{
-      nextt_horz = std::min(1.0, ( yInd*grid->dy + grid->yMin - ys) / dy);
-    }
-
-    nextt = std::min(nextt_horz,nextt_vert);
-
-
-    while(nextt<1.0-compTol){
-      startPt(0) = xs + dx*currt;
-      startPt(1) = ys + dy*currt;
-      endPt(0) = xs + dx*nextt;
-      endPt(1) = ys + dy*nextt;
-
-      val += ConjugateFunctionType::LineIntegralDeriv(wi, xi, startPt, endPt, unbalancedPenalty)*dist->Density(xInd,yInd);
-
-      // we leave out the top or bottom
-      if(std::abs(nextt-nextt_horz)<compTol){
-
-        if(posSlope){
-          yInd++;
-          nextt_horz = std::min(1.0, ((yInd+1)*grid->dy + grid->yMin-ys)/dy);
-        }else{
-          yInd--;
-          nextt_horz = std::min(1.0, ((yInd)*grid->dy + grid->yMin-ys)/dy);
-        }
-      }
-
-      // leave out the right (note that we could leave out the right and top/bottom if we leave a corner)
-      if(std::abs(nextt-nextt_vert)<compTol){
-        xInd++;
-        nextt_vert = std::min(1.0,  ( (xInd+1)*grid->dx + grid->xMin - xs) / dx);
-      }
-      currt = nextt;
-      nextt = std::min(nextt_horz,nextt_vert);
-    }
-
-    if((xInd<grid->NumCells(0))&&(yInd<grid->NumCells(1))){
-      startPt(0) = xs + dx*currt;
-      startPt(1) = ys + dy*currt;
-      endPt(0) = xs + dx*nextt;
-      endPt(1) = ys + dy*nextt;
-
-      val += ConjugateFunctionType::LineIntegralDeriv(wi, xi, startPt, endPt, unbalancedPenalty)*dist->Density(xInd,yInd);
-    }
-
-    return val;
-  }
-}
-
-template<typename ConjugateFunctionType>
 Eigen::SparseMatrix<double> SemidiscreteOT<ConjugateFunctionType>::ComputeHessian(Eigen::VectorXd const& prices,
                                                                                   LaguerreDiagram const& lagDiag) const
 {
@@ -438,7 +309,11 @@ Eigen::SparseMatrix<double> SemidiscreteOT<ConjugateFunctionType>::ComputeHessia
       std::tie(cellInd2, srcPt, tgtPt) = edgeTuple;
 
       // Compute the integral of the target density along the edge
-      intVal = 0.5*LineIntegral(prices(cellInd1), discrPts.col(cellInd1), srcPt, tgtPt)/(discrPts.col(cellInd1)-discrPts.col(cellInd2)).norm();
+      auto func = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2)
+      {
+        return ConjugateFunctionType::LineIntegralDeriv(prices(cellInd1), discrPts.col(cellInd1), pt1, pt2, unbalancedPenalty);
+      };
+      intVal = 0.5*LineIntegral(func, srcPt, tgtPt)/(discrPts.col(cellInd1)-discrPts.col(cellInd2)).norm();
 
       diagVals(cellInd1) -= intVal;
       hessVals.push_back(T(cellInd1,cellInd2,intVal));

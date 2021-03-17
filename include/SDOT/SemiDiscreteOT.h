@@ -62,9 +62,20 @@ namespace sdot{
         @param[in] The optimal Laguerre diagram we wish to use to compute the gradient wrt each x_i
         @return A matrix of derivatives wrt to each seed point in the Laguerre diagram.  output(0,i) contains d/dx_i and output(1,i) contains d/dy_i
     */
-    Eigen::Matrix2Xd PointGradient(Eigen::VectorXd const& prices, LaguerreDiagram const& lagDiag) const;
+    Eigen::Matrix2Xd PointGradient(Eigen::VectorXd const& prices,
+                                   LaguerreDiagram const& lagDiag) const;
 
     Eigen::Matrix2Xd PointGradient() const;
+
+    /**
+    Computes the Hessian of the Kantorovich dual objective wrt to the point
+    locations.   The components are order (x_1, y_1, x_2, y_2, ..., x_N, y_N),
+    which corresponds to the column-stacked version matrix returned by PointGradient().
+    */
+    Eigen::SparseMatrix<double> PointHessian(Eigen::VectorXd const& prices,
+                                             LaguerreDiagram const& lagDiag) const;
+
+    Eigen::SparseMatrix<double> PointHessian() const;
 
     /** Sets the weight on the marginal discrepancy penalties in the unbalanced
         setting.  Has no impact on  the usual Wasserstein -2 balanced  case.
@@ -161,33 +172,223 @@ namespace sdot{
     for a line segment \f$\partial \Omega\f$ between two cells in the Laguerre
     diagram.
     */
-    double LineIntegral(double wi,
-                        Eigen::Ref<const Eigen::Vector2d> const& xi,
-                        LaguerreDiagram::Point_2 const& srcPt,
-                        LaguerreDiagram::Point_2 const& tgtPt) const;
 
-    /**
-    Computes the integral
-    \f[
-    \int_{x_{min}}^{x_{max}}\int_{y_{min}}^{y_{max}} 1/2 (x-x_j)^2 + 1/2 (y-y_j)^2 dydx
-    \f]
-    over a rectangular region \f$\Omega= [x_{min},x_{max}] \times [y_{min},y_{max}]\f$.
-    */
-    static double SquareIntegral(double xmin, double xmax,
-                                 double ymin, double ymax,
-                                 double px,   double py);
+    template<typename FunctionType>
+    typename std::invoke_result<FunctionType,Eigen::Vector2d,Eigen::Vector2d>::type LineIntegral(FunctionType f,
+                                    LaguerreDiagram::Point_2 const& srcPt,
+                                    LaguerreDiagram::Point_2 const& tgtPt) const
+    {
+      const double compTol = 1e-11;
 
-    /**
-    Computes the integral
-    \f[
-    \int_{\Omega} 1/2 (x-x_j)^2 + 1/2 (y-y_j)^2 dxdy
-    \f]
-    over a triangle defined by points (x1,y1), (x2,y2), and (x3,y3).
-    */
-    static double TriangleIntegral(double x1, double y1,
-                                   double x2, double y2,
-                                   double x3, double y3,
-                                   double px, double py);
+      double xs = CGAL::to_double(srcPt.x());
+      double ys = CGAL::to_double(srcPt.y());
+      double xt = CGAL::to_double(tgtPt.x());
+      double yt = CGAL::to_double(tgtPt.y());
+
+      // Points on either end of a line segment
+      Eigen::Vector2d startPt(2), endPt(2);
+
+      // if the edge is vertical...
+      if(std::abs(xt-xs)<compTol){
+
+        startPt(0) = xs;
+        endPt(0) = xs;
+
+        // Assume we are working from bottom to top
+        if(yt<ys){
+          std::swap(xt,xs);
+          std::swap(yt,ys);
+        }
+
+        unsigned int xInd = grid->LeftNode(xs);
+        unsigned int yInd = grid->BottomNode(ys);
+        const double maxY = CGAL::to_double(yt);
+
+        double currY = CGAL::to_double( ys );
+        double nextY = grid->TopNode(ys);
+
+        // If the source point is on a boundary...
+        if(std::abs(nextY-currY)<compTol)
+          nextY += grid->dy;
+
+        // Initial value
+        startPt(1) = currY;
+        endPt(1) = nextY;
+        typename std::invoke_result<FunctionType,Eigen::Vector2d,Eigen::Vector2d>::type val = f(startPt, endPt)*dist->Density(xInd,yInd);
+
+        yInd++;
+        currY = nextY;
+        nextY = currY+grid->dy;
+
+        while(nextY<maxY-compTol){
+          startPt(1) = currY;
+          endPt(1) = nextY;
+
+          val += f(startPt, endPt)*dist->Density(xInd,yInd);
+
+          yInd++;
+          currY = nextY;
+          nextY = currY+grid->dy;
+        }
+
+        startPt(1) = currY;
+        endPt(1) = maxY;
+
+        val += f(startPt, endPt)*dist->Density(xInd,yInd);
+
+        return val;
+
+      // If the edge is horizontal
+      }else if(std::abs(yt-ys)<compTol){
+
+        startPt(1) = ys;
+        endPt(1) = ys;
+
+        // Assume we are working from left to right and swap direction if we're not
+        if(xt<xs){
+          std::swap(xt,xs);
+          std::swap(yt,ys);
+        }
+
+        unsigned int xInd = grid->LeftNode(xs);
+        unsigned int yInd = grid->BottomNode(ys);
+
+        const double maxX = CGAL::to_double(xt);
+
+        double currX = CGAL::to_double( xs );
+        double nextX = grid->RightNode(xs);
+
+        // If the source is on a boundary...
+        if(std::abs(nextX-currX)<compTol)
+          nextX += grid->dx;
+
+        // Initial value
+        startPt(0) = currX;
+        endPt(0) = nextX;
+        typename std::invoke_result<FunctionType,Eigen::Vector2d,Eigen::Vector2d>::type val = f(startPt, endPt)*dist->Density(xInd,yInd);
+        xInd++;
+        currX = nextX;
+        nextX = currX+grid->dx;
+
+        while(nextX<maxX-compTol){
+          startPt(0) = currX;
+          endPt(0) = nextX;
+
+          val += f(startPt, endPt)*dist->Density(xInd,yInd);
+
+          xInd++;
+          currX = nextX;
+          nextX = currX+grid->dx;
+        }
+
+        startPt(0) = currX;
+        endPt(0) = maxX;
+
+        val += f(startPt, endPt)*dist->Density(xInd,yInd);
+
+        return val;
+
+      // Otherwise there is a nonzero finite slope
+      }else{
+
+        // Assume we are working from left to right and swap direction if we're not
+        if(xt<xs){
+          std::swap(xt,xs);
+          std::swap(yt,ys);
+        }
+
+        double dy = yt-ys;
+        double dx = xt-xs;
+
+        // The length of the source -> target line segment
+        double segLenth = std::sqrt(dy*dy+dx*dx);
+
+        /* We parameterize the line segment as ps + t*(pt-ps), where ps is the
+           source point and target is the target node.  As we walk along the line
+           segment and compute the integral,
+           - currt holds the current position along the line
+           - nextt_vert holds the next value of t where the line segment crosses a vertical grid line
+           - nextt_horz holds the next value of t where the line segment crosses a horizontal grid line
+           - nextt holds the minimum of nextt_vert and nextt_horz
+        */
+        double currt = 0.0;
+        double nextt_vert, nextt_horz;
+        double nextt;
+
+
+        // Compute the slope of the line
+        bool posSlope = dy>0;
+
+        // Get the starting grid cells
+        unsigned int xInd = grid->LeftNode(xs);
+        unsigned int yInd = grid->BottomNode(ys);
+
+        // Handle situations where the source starts on a boundary
+        if(std::abs(yInd*grid->dy+grid->yMin - ys)<compTol){
+          if(yt<ys-compTol){
+            yInd--;
+          }
+        }
+
+        nextt_vert = std::min(1.0, ( (xInd+1)*grid->dx + grid->xMin - xs) / dx);
+
+        if(posSlope){
+          nextt_horz = std::min(1.0, ( (yInd+1.0)*grid->dy + grid->yMin - ys) / dy);
+        }else{
+          nextt_horz = std::min(1.0, ( yInd*grid->dy + grid->yMin - ys) / dy);
+        }
+
+        nextt = std::min(nextt_horz,nextt_vert);
+
+        // initial value
+        startPt(0) = xs + dx*currt;
+        startPt(1) = ys + dy*currt;
+        endPt(0) = xs + dx*nextt;
+        endPt(1) = ys + dy*nextt;
+        typename std::invoke_result<FunctionType,Eigen::Vector2d,Eigen::Vector2d>::type val = f(startPt, endPt)*dist->Density(xInd,yInd);
+        val -= val; // Make surethe value starts off at 0
+
+        while(nextt<1.0-compTol){
+          startPt(0) = xs + dx*currt;
+          startPt(1) = ys + dy*currt;
+          endPt(0) = xs + dx*nextt;
+          endPt(1) = ys + dy*nextt;
+
+          val += f(startPt, endPt)*dist->Density(xInd,yInd);
+
+          // we leave out the top or bottom
+          if(std::abs(nextt-nextt_horz)<compTol){
+
+            if(posSlope){
+              yInd++;
+              nextt_horz = std::min(1.0, ((yInd+1)*grid->dy + grid->yMin-ys)/dy);
+            }else{
+              yInd--;
+              nextt_horz = std::min(1.0, ((yInd)*grid->dy + grid->yMin-ys)/dy);
+            }
+          }
+
+          // leave out the right (note that we could leave out the right and top/bottom if we leave a corner)
+          if(std::abs(nextt-nextt_vert)<compTol){
+            xInd++;
+            nextt_vert = std::min(1.0,  ( (xInd+1)*grid->dx + grid->xMin - xs) / dx);
+          }
+          currt = nextt;
+          nextt = std::min(nextt_horz,nextt_vert);
+        }
+
+        if((xInd<grid->NumCells(0))&&(yInd<grid->NumCells(1))){
+          startPt(0) = xs + dx*currt;
+          startPt(1) = ys + dy*currt;
+          endPt(0) = xs + dx*nextt;
+          endPt(1) = ys + dy*nextt;
+
+          val += f(startPt, endPt)*dist->Density(xInd,yInd);
+        }
+
+        return val;
+      }
+    }
 
   };
 
