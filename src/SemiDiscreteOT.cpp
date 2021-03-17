@@ -77,17 +77,32 @@ std::tuple<double,Eigen::VectorXd, Eigen::SparseMatrix<double>> SemidiscreteOT<C
 template<typename ConjugateFunctionType>
 Eigen::Matrix2Xd SemidiscreteOT<ConjugateFunctionType>::PointGradient() const
 {
-  return PointGradient(*lagDiag);
+  return PointGradient(optPrices, *lagDiag);
 }
 
 template<typename ConjugateFunctionType>
-Eigen::Matrix2Xd SemidiscreteOT<ConjugateFunctionType>::PointGradient(LaguerreDiagram const& lagDiag) const
+Eigen::Matrix2Xd SemidiscreteOT<ConjugateFunctionType>::PointGradient(Eigen::VectorXd const& prices,
+                                                                      LaguerreDiagram const& lagDiag) const
 {
-  Eigen::Matrix2Xd seeds = lagDiag.SeedPts();
-  Eigen::VectorXd areas = lagDiag.Areas(dist);
-  Eigen::Matrix2Xd centroids = lagDiag.Centroids(dist);
+  int numCells =  lagDiag.NumCells();
+  Eigen::Matrix2Xd grad(2,numCells);
 
-  return (seeds-centroids)*areas.asDiagonal();
+  // Loop over all ofthe cells
+  for(int i=0; i<numCells; ++i){
+
+    auto triFunc = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2, Eigen::Vector2d const& pt3)
+      {
+        return ConjugateFunctionType::TriangularIntegralPointGrad(prices(i), discrPts.col(i), pt1,pt2,pt3,unbalancedPenalty);
+      };
+    auto rectFunc = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2)
+      {
+        return ConjugateFunctionType::RectangularIntegralPointGrad(prices(i), discrPts.col(i), pt1,pt2,unbalancedPenalty);
+      };
+
+    grad.col(i) = lagDiag.IntegrateOverCell(i, triFunc, rectFunc, dist);
+  }
+
+  return grad;
 }
 
 template<typename ConjugateFunctionType>
@@ -529,6 +544,7 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT<ConjugateFunctionType>::Solve(
       if(printLevel>0){
         std::printf("Terminating because gradient norm (%4.2e) is smaller than gtol_abs (%4.2e).\n", gradNorm, gtol_abs);
       }
+      optPrices = x;
       return std::make_pair(x,fval);
     }
 
@@ -603,6 +619,7 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT<ConjugateFunctionType>::Solve(
       if(printLevel>0){
         std::printf("Terminating because stepsize (%4.2e) is smaller than xtol_abs (%4.2e).\n", stepNorm, xtol_abs);
       }
+      optPrices = newX;
       return std::make_pair(newX,newF);
     }
 
@@ -613,6 +630,7 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT<ConjugateFunctionType>::Solve(
         if(printLevel>0){
           std::printf("Terminating because change in objective (%4.2e) is smaller than ftol_abs (%4.2e).\n", fval-newF, ftol_abs);
         }
+        optPrices = newX;
         return std::make_pair(newX,newF);
       }
 
@@ -650,6 +668,7 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT<ConjugateFunctionType>::Solve(
     std::printf("Terminating because maximum number of iterations (%d) was reached.", maxEvals);
   }
 
+  optPrices = x;
   return std::make_pair(x,fval);
 }
 

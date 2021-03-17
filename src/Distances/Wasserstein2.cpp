@@ -89,3 +89,28 @@ double Wasserstein2::RectangularIntegralDeriv2(double                 wi,
 {
   return 0;
 }
+
+
+Eigen::Vector2d Wasserstein2::TriangularIntegralPointGrad(double wi,
+                                                 Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                                 Eigen::Vector2d const& pt1,
+                                                 Eigen::Vector2d const& pt2,
+                                                 Eigen::Vector2d const& pt3,
+                                                 double penaltyCoeff)
+{
+  double det   = (pt2(0)-pt1(0))*(pt3(1)-pt1(1)) - (pt3(0)-pt1(0))*(pt2(1)-pt1(1));
+  return 2.0*(0.5*(pt2-xi) - (1.0/3.0)*(pt2-pt1)+(1.0/6.0)*(pt3-pt1))*det;
+}
+
+
+Eigen::Vector2d Wasserstein2::RectangularIntegralPointGrad(double wi,
+                                                  Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                                  Eigen::Vector2d const& pt1,
+                                                  Eigen::Vector2d const& pt2,
+                                                  double penaltyCoeff)
+{
+  Eigen::Vector2d out(2);
+  out << 0.5*(pt2(1)-pt1(1))*(std::pow(pt2(0)-xi(0),2.0)-std::pow(pt1(0)-xi(0),2.0)),
+         0.5*(pt2(0)-pt1(0))*(std::pow(pt2(1)-xi(1),2.0)-std::pow(pt1(1)-xi(1),2.0));
+  return 2.0*out;
+}

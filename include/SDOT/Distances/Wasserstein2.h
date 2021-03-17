@@ -104,6 +104,37 @@ public:
                                   double penaltyCoeff=1);
 
 
+
+
+  /**
+  This function is used to compute the PointGradient.  It returns the integral
+  of
+  \f[
+  \int_{\Omega} (F^\ast)^\prime(w_i - c(x,x_i)) (x-x_i) dx
+  \f]
+  over a triangular region \f$\Omega\f$.
+  */
+  static Eigen::Vector2d TriangularIntegralPointGrad(double wi,
+                                            Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                            Eigen::Vector2d const& pt1,
+                                            Eigen::Vector2d const& pt2,
+                                            Eigen::Vector2d const& pt3,
+                                            double penaltyCoeff=1);
+
+
+  /**
+   This function is used to compute the PointGradient.  It returns the integral
+   of
+   \f[
+   \int_{\Omega} (F^\ast)^\prime(w_i - c(x,x_i)) (x-x_i) dx
+   \f]
+   over a rectangular region \f$\Omega\f$.
+  */
+  static Eigen::Vector2d RectangularIntegralPointGrad(double wi,
+                                             Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                             Eigen::Vector2d const& pt1,
+                                             Eigen::Vector2d const& pt2,
+                                             double penaltyCoeff=1);
 }; // class Wasserstein2
 
 }// namespace distances

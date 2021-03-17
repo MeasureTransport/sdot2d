@@ -62,7 +62,7 @@ namespace sdot{
         @param[in] The optimal Laguerre diagram we wish to use to compute the gradient wrt each x_i
         @return A matrix of derivatives wrt to each seed point in the Laguerre diagram.  output(0,i) contains d/dx_i and output(1,i) contains d/dy_i
     */
-    Eigen::Matrix2Xd PointGradient(LaguerreDiagram const& lagDiag) const;
+    Eigen::Matrix2Xd PointGradient(Eigen::VectorXd const& prices, LaguerreDiagram const& lagDiag) const;
 
     Eigen::Matrix2Xd PointGradient() const;
 
@@ -150,6 +150,7 @@ namespace sdot{
     // The most recently constructed Laguerre diagram
     std::shared_ptr<LaguerreDiagram> lagDiag;
 
+    Eigen::VectorXd optPrices;
 
 
     /**

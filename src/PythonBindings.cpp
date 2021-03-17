@@ -81,7 +81,7 @@ PYBIND11_MODULE(_pysdot, m) {
     .def(py::init<std::shared_ptr<Distribution2d> const&, Eigen::MatrixXd const&, Eigen::VectorXd const&>())
     .def("Solve", &SemidiscreteOT<Wasserstein2>::Solve, py::arg("prices0"), py::arg("opts")=OptionList())
     .def("Diagram", &SemidiscreteOT<Wasserstein2>::Diagram)
-    .def("PointGradient", (Eigen::Matrix2Xd (SemidiscreteOT<Wasserstein2>::*)(LaguerreDiagram const&) const) &SemidiscreteOT<Wasserstein2>::PointGradient)
+    .def("PointGradient", (Eigen::Matrix2Xd (SemidiscreteOT<Wasserstein2>::*)(Eigen::VectorXd const&, LaguerreDiagram const&) const) &SemidiscreteOT<Wasserstein2>::PointGradient)
     .def("PointGradient", (Eigen::Matrix2Xd (SemidiscreteOT<Wasserstein2>::*)() const) &SemidiscreteOT<Wasserstein2>::PointGradient)
     .def("SetPoints", &SemidiscreteOT<Wasserstein2>::SetPoints)
     .def("Objective", &SemidiscreteOT<Wasserstein2>::Objective)

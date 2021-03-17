@@ -1,6 +1,8 @@
 #ifndef DISTANCES_QUADRATICREGULARIZATION_H
 #define DISTANCES_QUADRATICREGULARIZATION_H
 
+#include <type_traits>
+
 #include "SDOT/Distances/TriangularQuadrature.h"
 #include "SDOT/Distances/RectangularQuadrature.h"
 #include "SDOT/Distances/LineQuadrature.h"
@@ -112,16 +114,34 @@ public:
                                   Eigen::Vector2d const& pt2,
                                   double penaltyCoeff=1);
 
+  static Eigen::Vector2d TriangularIntegralPointGrad(double wi,
+                                            Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                            Eigen::Vector2d const& pt1,
+                                            Eigen::Vector2d const& pt2,
+                                            Eigen::Vector2d const& pt3,
+                                            double penaltyCoeff=1);
+
+
+  /**
+   This function is used to compute the PointGradient.  It returns the integral
+   of
+   \f[
+   \int_{\Omega} (F^\ast)^\prime(w_i - c(x,x_i)) (x-x_i) dx
+   \f]
+   over a rectangular region \f$\Omega\f$.
+  */
+  static Eigen::Vector2d RectangularIntegralPointGrad(double wi,
+                                             Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                             Eigen::Vector2d const& pt1,
+                                             Eigen::Vector2d const& pt2,
+                                             double penaltyCoeff=1);
 
   /** Uses quadrature to compute an integral of \f$ f(w_i-c(x,x_i))\f$ over a triangle. */
   template<typename FunctionType>
-  static double GenericTriangularIntegral(FunctionType f,
-                                          double                 wi,
-                                          Eigen::Ref<const Eigen::Vector2d> const& xi,
+  static typename std::invoke_result<FunctionType,Eigen::Vector2d>::type GenericTriangularIntegral(FunctionType f,
                                           Eigen::Vector2d const& pt1,
                                           Eigen::Vector2d const& pt2,
-                                          Eigen::Vector2d const& pt3,
-                                          double penaltyCoeff=1)
+                                          Eigen::Vector2d const& pt3)
   {
       Eigen::Matrix2d A(2,2); // 2x2 matrix transforming reference coordinates to spatial coordinates
 
@@ -134,24 +154,21 @@ public:
       Eigen::VectorXd quadWts;
       std::tie(quadPts, quadWts) = TriangularQuadrature::Get(7);
 
-      Eigen::VectorXd vals(quadWts.size());
-      Eigen::Vector2d testPt(2);
-      for(int i=0; i<quadWts.size(); ++i){
-        testPt = pt1 + A*quadPts.col(i); // map pt in reference triangle to real coordinates
-        vals(i) = f(wi - (testPt - xi).squaredNorm(), penaltyCoeff);
+      typename std::invoke_result<FunctionType,Eigen::Vector2d>::type output = quadWts(0)*f(pt1 + A*quadPts.col(0));
+
+      for(int i=1; i<quadWts.size(); ++i){
+        output += quadWts(i)*f(pt1 + A*quadPts.col(i)); // map pt in reference triangle to real coordinates
       }
 
-      return jacDet*quadWts.dot(vals);
+      output *= jacDet;
+      return output;
   };
 
   /** Uses quadrature to compute an integral of \f$ f(w_i-c(x,x_i))\f$ over a line segment. */
   template<typename FunctionType>
-  static double GenericLineIntegral(FunctionType f,
-                                          double                 wi,
-                                          Eigen::Ref<const Eigen::Vector2d> const& xi,
-                                          Eigen::Vector2d const& pt1,
-                                          Eigen::Vector2d const& pt2,
-                                          double penaltyCoeff=1)
+  static typename std::invoke_result<FunctionType,Eigen::Vector2d>::type GenericLineIntegral(FunctionType f,
+                                    Eigen::Vector2d const& pt1,
+                                    Eigen::Vector2d const& pt2)
   {
       Eigen::Vector2d diff = pt2-pt1;
       double segLength = diff.norm();
@@ -160,43 +177,38 @@ public:
       Eigen::VectorXd quadPts, quadWts;
       std::tie(quadPts, quadWts) = LineQuadrature::Get(7);
 
-      Eigen::VectorXd vals(quadWts.size());
-      Eigen::Vector2d testPt(2);
-      for(int i=0; i<quadWts.size(); ++i){
-        testPt = pt1 + diff*quadPts(i); // map pt in reference triangle to real coordinates
-        vals(i) = f(wi - (testPt - xi).squaredNorm(), penaltyCoeff);
+      typename std::invoke_result<FunctionType,Eigen::Vector2d>::type output = quadWts(0)*f(pt1 + diff*quadPts(0));
+
+      for(int i=1; i<quadWts.size(); ++i){
+        output += quadWts(i)*f(pt1 + diff*quadPts(i)); // map pt in reference triangle to real coordinates
       }
 
-      return segLength*quadWts.dot(vals);
+      output *= segLength;
+      return output;
   };
 
   /** Uses quadrature to compute an integral of \f$ f(w_i-c(x,x_i))\f$ over a triangle. */
   template<typename FunctionType>
-  static double GenericRectangularIntegral(FunctionType f,
-                                           double                 wi,
-                                           Eigen::Ref<const Eigen::Vector2d> const& xi,
-                                           Eigen::Vector2d const& pt1,
-                                           Eigen::Vector2d const& pt2,
-                                           double penaltyCoeff=1)
+  static typename std::invoke_result<FunctionType,Eigen::Vector2d>::type GenericRectangularIntegral(FunctionType f,
+                                         Eigen::Vector2d const& pt1,
+                                         Eigen::Vector2d const& pt2)
   {
 
       Eigen::Matrix2Xd quadPts;
       Eigen::VectorXd quadWts;
       std::tie(quadPts, quadWts) = RectangularQuadrature::Get(7);
 
-      Eigen::VectorXd vals(quadWts.size());
-      Eigen::Vector2d testPt(2);
-
       Eigen::Vector2d scale = pt2-pt1;
 
-      for(int i=0; i<quadWts.size(); ++i){
+      typename std::invoke_result<FunctionType,Eigen::Vector2d>::type output = quadWts(0)*f(pt1 + scale.asDiagonal()*quadPts.col(0));
 
-        testPt = pt1 + scale.asDiagonal()*quadPts.col(i); // map pt in reference triangle to real coordinates
 
-        vals(i) = f(wi - (testPt - xi).squaredNorm(), penaltyCoeff);
+      for(int i=1; i<quadWts.size(); ++i){
+        output += quadWts(i)*f(pt1 + scale.asDiagonal()*quadPts.col(i)); // map pt in reference triangle to real coordinates
       }
 
-      return scale.prod()*quadWts.dot(vals);
+      output *= scale.prod();
+      return output;
   };
 
 }; // class Wasserstein2

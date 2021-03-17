@@ -35,7 +35,12 @@ double QuadraticRegularization::TriangularIntegral(double wi,
                                         Eigen::Vector2d const& pt3,
                                         double penaltyCoeff)
 {
-  return QuadraticRegularization::GenericTriangularIntegral(QuadraticRegularization::Evaluate, wi,xi,pt1,pt2,pt3, penaltyCoeff);
+  auto func = [&](Eigen::Vector2d const& x)
+    {
+      return QuadraticRegularization::Evaluate(wi - (x - xi).squaredNorm(), penaltyCoeff);
+    };
+
+  return QuadraticRegularization::GenericTriangularIntegral(func,pt1,pt2,pt3);
 }
 
 double QuadraticRegularization::RectangularIntegral(double wi,
@@ -44,7 +49,12 @@ double QuadraticRegularization::RectangularIntegral(double wi,
                                          Eigen::Vector2d const& topRight,
                                          double penaltyCoeff)
 {
-  return QuadraticRegularization::GenericRectangularIntegral(QuadraticRegularization::Evaluate, wi,xi,bottomLeft,topRight, penaltyCoeff);
+  auto func = [&](Eigen::Vector2d const& x)
+    {
+      return QuadraticRegularization::Evaluate(wi - (x - xi).squaredNorm(), penaltyCoeff);
+    };
+
+  return QuadraticRegularization::GenericRectangularIntegral(func,bottomLeft,topRight);
 }
 
 double QuadraticRegularization::TriangularIntegralDeriv(double wi,
@@ -54,7 +64,12 @@ double QuadraticRegularization::TriangularIntegralDeriv(double wi,
                                              Eigen::Vector2d const& pt3,
                                              double penaltyCoeff)
 {
-  return QuadraticRegularization::GenericTriangularIntegral(QuadraticRegularization::Derivative, wi,xi,pt1,pt2,pt3, penaltyCoeff);
+  auto func = [&](Eigen::Vector2d const& x)
+    {
+      return QuadraticRegularization::Derivative(wi - (x - xi).squaredNorm(), penaltyCoeff);
+    };
+
+  return QuadraticRegularization::GenericTriangularIntegral(func,pt1,pt2,pt3);
 }
 
 double QuadraticRegularization::RectangularIntegralDeriv(double wi,
@@ -63,7 +78,12 @@ double QuadraticRegularization::RectangularIntegralDeriv(double wi,
                                               Eigen::Vector2d const& topRight,
                                               double penaltyCoeff)
 {
-  return QuadraticRegularization::GenericRectangularIntegral(QuadraticRegularization::Derivative, wi,xi,bottomLeft,topRight, penaltyCoeff);
+  auto func = [&](Eigen::Vector2d const& x)
+    {
+      return QuadraticRegularization::Derivative(wi - (x - xi).squaredNorm(), penaltyCoeff);
+    };
+
+  return QuadraticRegularization::GenericRectangularIntegral(func,bottomLeft,topRight);
 }
 
 double QuadraticRegularization::LineIntegralDeriv(double                 wi,
@@ -72,7 +92,12 @@ double QuadraticRegularization::LineIntegralDeriv(double                 wi,
                                                   Eigen::Vector2d const& pt2,
                                                   double penaltyCoeff)
 {
-  return QuadraticRegularization::GenericLineIntegral(QuadraticRegularization::Derivative, wi,xi,pt1,pt2, penaltyCoeff);
+  auto func = [&](Eigen::Vector2d const& x)
+    {
+      return QuadraticRegularization::Derivative(wi - (x - xi).squaredNorm(), penaltyCoeff);
+    };
+
+  return QuadraticRegularization::GenericLineIntegral(func, pt1,pt2);
 }
 
 
@@ -83,7 +108,12 @@ double QuadraticRegularization::TriangularIntegralDeriv2(double                 
                                               Eigen::Vector2d const& pt3,
                                               double penaltyCoeff)
 {
-  return QuadraticRegularization::GenericTriangularIntegral(QuadraticRegularization::Derivative2, wi,xi,pt1,pt2,pt3, penaltyCoeff);
+  auto func = [&](Eigen::Vector2d const& x)
+    {
+      return QuadraticRegularization::Derivative2(wi - (x - xi).squaredNorm(), penaltyCoeff);
+    };
+
+  return QuadraticRegularization::GenericTriangularIntegral(func,pt1,pt2,pt3);
 }
 
 double QuadraticRegularization::RectangularIntegralDeriv2(double                 wi,
@@ -92,5 +122,42 @@ double QuadraticRegularization::RectangularIntegralDeriv2(double                
                                                Eigen::Vector2d const& upperRight,
                                                double penaltyCoeff)
 {
-  return QuadraticRegularization::GenericRectangularIntegral(QuadraticRegularization::Derivative2, wi,xi,lowerLeft,upperRight, penaltyCoeff);
+  auto func = [&](Eigen::Vector2d const& x)
+    {
+      return QuadraticRegularization::Derivative2(wi - (x - xi).squaredNorm(), penaltyCoeff);
+    };
+
+  return QuadraticRegularization::GenericRectangularIntegral(func,lowerLeft,upperRight);
+}
+
+
+Eigen::Vector2d QuadraticRegularization::TriangularIntegralPointGrad(double wi,
+                                          Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                          Eigen::Vector2d const& pt1,
+                                          Eigen::Vector2d const& pt2,
+                                          Eigen::Vector2d const& pt3,
+                                          double penaltyCoeff)
+{
+  auto func = [&](Eigen::Vector2d const& x)
+    {
+      return (2.0*(x-xi).eval()*QuadraticRegularization::Derivative(wi - (x - xi).squaredNorm(), penaltyCoeff)).eval();
+    };
+
+  return QuadraticRegularization::GenericTriangularIntegral(func, pt1,pt2,pt3);
+}
+
+
+
+Eigen::Vector2d QuadraticRegularization::RectangularIntegralPointGrad(double wi,
+                                           Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                           Eigen::Vector2d const& pt1,
+                                           Eigen::Vector2d const& pt2,
+                                           double penaltyCoeff)
+{
+ auto func = [&](Eigen::Vector2d const& x)
+   {
+     return (2.0*(x-xi)*QuadraticRegularization::Derivative(wi - (x - xi).squaredNorm(), penaltyCoeff)).eval();
+   };
+
+ return QuadraticRegularization::GenericRectangularIntegral(func, pt1,pt2);
 }

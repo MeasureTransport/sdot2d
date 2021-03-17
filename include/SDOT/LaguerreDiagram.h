@@ -164,16 +164,16 @@ public:
   */
 
   template<typename TriType>
-  double IntegrateOverCell(unsigned int cellInd,
+  auto IntegrateOverCell(unsigned int cellInd,
                            TriType triFunc) const;
 
   template<typename TriType, typename RectType>
-  double IntegrateOverCell(unsigned int cellInd,
+  auto IntegrateOverCell(unsigned int cellInd,
                            TriType triFunc,
                            RectType rectFunc) const{return IntegrateOverCell(cellInd,triFunc);};
 
   template<typename TriType, typename RectType>
-  double IntegrateOverCell(unsigned int cellInd,
+  auto IntegrateOverCell(unsigned int cellInd,
                            TriType triFunc,
                            RectType rectFunc,
                            std::shared_ptr<Distribution2d> const& dist) const;
@@ -276,7 +276,7 @@ private:
 
 
 template<typename TriType, typename RectType>
-double LaguerreDiagram::IntegrateOverCell(unsigned int cellInd,
+auto LaguerreDiagram::IntegrateOverCell(unsigned int cellInd,
                                           TriType triFunc,
                                           RectType rectFunc,
                                           std::shared_ptr<Distribution2d> const& dist) const
@@ -288,13 +288,18 @@ double LaguerreDiagram::IntegrateOverCell(unsigned int cellInd,
 
   auto& grid = dist->Grid();
 
-  double result = 0.0;
+  Eigen::Vector2d pt1(2), pt2(2), pt3(2);
+  pt1 << 0.0, 0.0;
+
+  // Should set result to 0
+  auto zeroVal = rectFunc(pt1,pt1);
 
   // Loop over the grid cells in this Laguerre cell
   if(laguerreCells.at(cellInd)==nullptr)
-    return 0.0;
+    return zeroVal;
+
   if(laguerreCells.at(cellInd)->size()==0)
-    return 0.0;
+    return zeroVal;
 
   auto start2 = std::chrono::steady_clock::now();
   PolygonRasterizeIter gridIter(dist->Grid(), laguerreCells.at(cellInd));
@@ -302,8 +307,9 @@ double LaguerreDiagram::IntegrateOverCell(unsigned int cellInd,
   double setup_time = std::chrono::duration<double>(end2-start2).count();
 
   unsigned int xInd, yInd;
-  Eigen::Vector2d pt1(2), pt2(2), pt3(2);
   double gridCellDens;
+  auto result = zeroVal;
+
 
   double bndry_total = 0;
   int num_bndry = 0;
@@ -323,7 +329,7 @@ double LaguerreDiagram::IntegrateOverCell(unsigned int cellInd,
     if(gridCellDens>0.0){
 
       // The area of the intersection of this grid cell and the Laguerre cell
-      double interResult = 0.0;
+      auto interResult = zeroVal;
 
       if(gridIter.IsBoundary()){
         start2 = std::chrono::steady_clock::now();
@@ -389,12 +395,12 @@ double LaguerreDiagram::IntegrateOverCell(unsigned int cellInd,
 
 /* Implementation of templated function. */
 template<typename TriType>
-double LaguerreDiagram::IntegrateOverCell(unsigned int cellInd, TriType triFunc) const
+auto LaguerreDiagram::IntegrateOverCell(unsigned int cellInd, TriType triFunc) const
 {
   Eigen::Vector2d pt1(2), pt2(2), pt3(2);
-
+  pt1 << 0.0, 0.0;
   if(laguerreCells.at(cellInd)==nullptr){
-    return 0;
+    return triFunc(pt1,pt1,pt1);
   }
 
   auto beginVert = laguerreCells.at(cellInd)->vertices_begin();
@@ -408,8 +414,14 @@ double LaguerreDiagram::IntegrateOverCell(unsigned int cellInd, TriType triFunc)
 
   //interArea = gridCellDens*CGAL::to_double( overlapPoly->area() );
 
-  double result = 0.0;
-  double triArea;
+  pt2(0) = CGAL::to_double( vert1->x() );
+  pt2(1) = CGAL::to_double( vert1->y() );
+  pt3(0) = CGAL::to_double( vert2->x() );
+  pt3(1) = CGAL::to_double( vert2->y() );
+
+  auto result = triFunc(pt1,pt2,pt3);
+  vert2++;
+  vert1++;
 
   for(; vert2!=laguerreCells.at(cellInd)->vertices_end(); vert2++, vert1++)
   {

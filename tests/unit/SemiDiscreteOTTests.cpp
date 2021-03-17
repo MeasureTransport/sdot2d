@@ -130,7 +130,10 @@ TEST(SemiDiscreteOT, Construction)
   auto dist = std::make_shared<DiscretizedDistribution>(grid, 5.0*Eigen::MatrixXd::Ones(1,1));
 
   SemidiscreteOT<Wasserstein2> solver(dist, pts, probs);
-  solver.Solve(Eigen::VectorXd::Ones(pts.cols()));
+
+  Eigen::VectorXd optPrices;
+  double obj;
+  std::tie(optPrices,obj) = solver.Solve(Eigen::VectorXd::Ones(pts.cols()));
 
   auto diag = solver.Diagram();
   assert(diag != nullptr);
@@ -140,6 +143,25 @@ TEST(SemiDiscreteOT, Construction)
 
   EXPECT_NEAR(probs(0), diag->CellArea(0, dist), 1e-3);
   EXPECT_NEAR(probs(1), diag->CellArea(1, dist), 1e-3);
+
+
+
+  Eigen::Matrix2Xd pointGrad = solver.PointGradient();
+
+  Eigen::VectorXd stepDir = Eigen::VectorXd::Random(2*pts.cols());
+  stepDir /= stepDir.norm();
+
+  double stepSize = 1e-5;
+  Eigen::Matrix2Xd pts2 = pts + stepSize*Eigen::Map<Eigen::Matrix2d>(stepDir.data(), 2, pts.cols());
+
+  SemidiscreteOT<Wasserstein2> solver2(dist, pts2, probs);
+  Eigen::VectorXd optPrices2;
+  double obj2;
+  std::tie(optPrices2,obj2) = solver2.Solve(Eigen::VectorXd::Ones(pts.cols()));
+
+  double fdDeriv = (obj2-obj)/stepSize;
+  double dirDeriv = Eigen::Map<Eigen::VectorXd>(pointGrad.data(), 2*pts.cols()).dot(stepDir);
+  EXPECT_NEAR(fdDeriv, dirDeriv, 1e-5);
 }
 
 TEST(SemiDiscreteOT, Construction_QuadraticRegularization)
@@ -152,11 +174,22 @@ TEST(SemiDiscreteOT, Construction_QuadraticRegularization)
   probs << 0.75,0.25;
 
   // Construct the continuous distribution
-  auto grid = std::make_shared<RegularGrid>(0.0, 0.0, 1.0, 1.0, 1, 1);
-  auto dist = std::make_shared<DiscretizedDistribution>(grid, Eigen::MatrixXd::Ones(1,1));
+  unsigned int  N = 1;
+  auto grid = std::make_shared<RegularGrid>(0.0, 0.0, 1.0, 1.0, N, N);
+  auto dist = std::make_shared<DiscretizedDistribution>(grid, Eigen::MatrixXd::Ones(N,N));
 
-  SemidiscreteOT<QuadraticRegularization> solver(dist, pts, probs, 10.0);
-  solver.Solve(Eigen::VectorXd::Ones(pts.cols()));
+
+  double penalty = 10.0;
+  SemidiscreteOT<QuadraticRegularization> solver(dist, pts, probs, penalty);
+
+  Eigen::VectorXd optPrices;
+  double obj;
+  OptionList opts;
+  opts["GTol Abs"] = 1e-15;
+  opts["XTol Abs"] = 1e-15;
+  opts["FTol Abs"] = 0.0;
+
+  std::tie(optPrices, obj)  = solver.Solve(Eigen::VectorXd::Ones(pts.cols()), opts);
 
   auto diag = solver.Diagram();
   assert(diag != nullptr);
@@ -165,6 +198,22 @@ TEST(SemiDiscreteOT, Construction_QuadraticRegularization)
   EXPECT_LT(0.5, diag->CellArea(0, dist));
   EXPECT_GT(0.5, diag->CellArea(1, dist));
 
-  std::cout << "Cell 1 Prob: " << diag->CellArea(0, dist) << " vs " << probs(0) <<std::endl;
-  std::cout << "Cell 2 Prob: " << diag->CellArea(1, dist) << " vs " << probs(1) <<std::endl;
+
+  // Check the point graddient
+  Eigen::Matrix2Xd pointGrad = solver.PointGradient();
+
+  Eigen::VectorXd stepDir = Eigen::VectorXd::Random(2*pts.cols());
+  stepDir /= stepDir.norm();
+
+  double stepSize = 1e-5;
+  Eigen::Matrix2Xd pts2 = pts + stepSize*Eigen::Map<Eigen::Matrix2d>(stepDir.data(), 2, pts.cols());
+
+  SemidiscreteOT<QuadraticRegularization> solver2(dist, pts2, probs, penalty);
+  Eigen::VectorXd optPrices2;
+  double obj2;
+  std::tie(optPrices2,obj2) = solver2.Solve(Eigen::VectorXd::Ones(pts.cols()), opts);
+
+  double fdDeriv = (obj2-obj)/stepSize;
+  double dirDeriv = Eigen::Map<Eigen::VectorXd>(pointGrad.data(), 2*pts.cols()).dot(stepDir);
+  EXPECT_NEAR(fdDeriv, dirDeriv, 1e-5);
 }
