@@ -1,5 +1,9 @@
 #include "SDOT/Distances/Wasserstein2.h"
 
+#include "SDOT/Distances/LineQuadrature.h"
+#include "SDOT/Distances/TriangularQuadrature.h"
+#include "SDOT/Distances/RectangularQuadrature.h"
+
 using namespace sdot;
 using namespace sdot::distances;
 
@@ -113,4 +117,39 @@ Eigen::Vector2d Wasserstein2::RectangularIntegralPointGrad(double wi,
   out << 0.5*(pt2(1)-pt1(1))*(std::pow(pt2(0)-xi(0),2.0)-std::pow(pt1(0)-xi(0),2.0)),
          0.5*(pt2(0)-pt1(0))*(std::pow(pt2(1)-xi(1),2.0)-std::pow(pt1(1)-xi(1),2.0));
   return 2.0*out;
+}
+
+
+Eigen::Matrix2d Wasserstein2::TriangularIntegralPointHessDiag(double wi,
+                                                  Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                                  Eigen::Vector2d const& pt1,
+                                                  Eigen::Vector2d const& pt2,
+                                                  Eigen::Vector2d const& pt3,
+                                                  double penaltyCoeff)
+{
+  return 2.0*Eigen::Matrix2d::Identity()*Wasserstein2::RectangularIntegralDeriv(wi, xi, pt1, pt2, penaltyCoeff);
+}
+
+Eigen::Matrix2d Wasserstein2::RectangularIntegralPointHessDiag(double wi,
+                                                  Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                                  Eigen::Vector2d const& pt1,
+                                                  Eigen::Vector2d const& pt2,
+                                                  double penaltyCoeff)
+{
+  return 2.0*Eigen::Matrix2d::Identity()*Wasserstein2::RectangularIntegralDeriv(wi, xi, pt1, pt2, penaltyCoeff);
+}
+
+Eigen::Matrix2d Wasserstein2::LineIntegralPointHess(double                 wi,
+                                Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                Eigen::Ref<const Eigen::Vector2d> const& xj,
+                                Eigen::Vector2d const& pt1,
+                                Eigen::Vector2d const& pt2,
+                                double penaltyCoeff)
+{
+  auto func = [&](Eigen::Vector2d const& x)
+    {
+      return Eigen::Matrix2d(Wasserstein2::Derivative(wi - (x - xi).squaredNorm(), penaltyCoeff)*(x-xj)*(x-xi).transpose());
+    };
+
+  return -2.0*LineQuadrature::Integrate(func, pt1, pt2);
 }

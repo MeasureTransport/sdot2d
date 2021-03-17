@@ -109,63 +109,67 @@ template<typename ConjugateFunctionType>
 Eigen::SparseMatrix<double> SemidiscreteOT<ConjugateFunctionType>::PointHessian(Eigen::VectorXd const& prices,
                                                                                 LaguerreDiagram const& lagDiag) const
 {
-  return Eigen::SparseMatrix<double>();
-  //
-  // const unsigned int numCells = discrPts.cols();
-  // typedef Eigen::Triplet<double> T;
-  //
-  // Eigen::VectorXd diagVals = Eigen::VectorXd::Zero(2*numCells);
-  //
-  // // For unbalanced transport, the Diagonal of the hessian has an additional term
-  // for(unsigned int cellInd=0; cellInd<numCells; ++cellInd) {
-  //
-  //   auto triFunc = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2, Eigen::Vector2d const& pt3)
-  //     {
-  //       return ConjugateFunctionType::TriangularIntegralPointHessDiag(prices(cellInd), discrPts.col(cellInd), pt1,pt2,pt3, unbalancedPenalty);
-  //     };
-  //   auto rectFunc = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2)
-  //     {
-  //       return ConjugateFunctionType::RectangularIntegralPointHessDiag(prices(cellInd), discrPts.col(cellInd), pt1,pt2, unbalancedPenalty);
-  //     };
-  //
-  //   diagVals.segment(2*cellInd,2) = lagDiag.IntegrateOverCell(cellInd, triFunc, rectFunc, dist);
-  // }
-  //
-  // ///////
-  // // Off-diagonal parts
-  //
-  // // Hold the i,j,val triplets defining the sparse Hessian
-  // std::vector<T> hessVals;
-  //
-  // Eigen::Matrix2d intVal;
-  // unsigned int cellInd2;
-  // LaguerreDiagram::Point_2 srcPt, tgtPt;
-  //
-  // for(unsigned int cellInd1=0; cellInd1<numCells; ++cellInd1){
-  //
-  //   for(auto edgeTuple : lagDiag.InternalEdges(cellInd1)){
-  //     std::tie(cellInd2, srcPt, tgtPt) = edgeTuple;
-  //
-  //     // Compute the integral of the target density along the edge
-  //     auto func = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2)
-  //     {
-  //       return ConjugateFunctionType::LineIntegralDeriv(prices(cellInd1), discrPts.col(cellInd1), pt1, pt2, unbalancedPenalty);
-  //     }
-  //     intVal = LineIntegral(func, srcPt, tgtPt)/(discrPts.col(cellInd1)-discrPts.col(cellInd2)).norm();
-  //
-  //     diagVals(cellInd1) -= intVal;
-  //     hessVals.push_back(T(cellInd1,cellInd2,intVal));
-  //   }
-  // }
-  //
-  // for(int i=0; i<numCells; ++i){
-  //   hessVals.push_back(T(i,i, diagVals(i)));
-  // }
-  //
-  // Eigen::SparseMatrix<double> hess(numCells,numCells);
-  // hess.setFromTriplets(hessVals.begin(), hessVals.end());
-  //
-  // return hess;
+  const unsigned int numCells = discrPts.cols();
+  typedef Eigen::Triplet<double> T;
+  std::vector<T> hessVals;
+
+  Eigen::VectorXd diagVals = Eigen::VectorXd::Zero(2*numCells);
+  Eigen::Matrix2d intVal;
+
+  // For unbalanced transport, the Diagonal of the hessian has an additional term
+  for(unsigned int cellInd=0; cellInd<numCells; ++cellInd) {
+
+    auto triFunc = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2, Eigen::Vector2d const& pt3)
+      {
+        return ConjugateFunctionType::TriangularIntegralPointHessDiag(prices(cellInd), discrPts.col(cellInd), pt1,pt2,pt3, unbalancedPenalty);
+      };
+    auto rectFunc = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2)
+      {
+        return ConjugateFunctionType::RectangularIntegralPointHessDiag(prices(cellInd), discrPts.col(cellInd), pt1,pt2, unbalancedPenalty);
+      };
+
+    intVal = lagDiag.IntegrateOverCell(cellInd, triFunc, rectFunc, dist);
+    hessVals.push_back(T(2*cellInd,2*cellInd,intVal(0,0)));
+    hessVals.push_back(T(2*cellInd,2*cellInd+1,intVal(0,1)));
+    hessVals.push_back(T(2*cellInd+1,2*cellInd,intVal(1,0)));
+    hessVals.push_back(T(2*cellInd+1,2*cellInd+1,intVal(1,1)));
+  }
+
+  ///////
+  // Off-diagonal parts
+
+  unsigned int cellInd2;
+  LaguerreDiagram::Point_2 srcPt, tgtPt;
+
+  for(unsigned int cellInd1=0; cellInd1<numCells; ++cellInd1){
+
+    for(auto edgeTuple : lagDiag.InternalEdges(cellInd1)){
+      std::tie(cellInd2, srcPt, tgtPt) = edgeTuple;
+
+      // Compute the integral of the target density along the edge
+      auto func = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2)
+      {
+        return ConjugateFunctionType::LineIntegralPointHess(prices(cellInd1), discrPts.col(cellInd1), discrPts.col(cellInd2), pt1, pt2, unbalancedPenalty);
+      };
+      intVal = LineIntegral(func, srcPt, tgtPt)/(discrPts.col(cellInd1)-discrPts.col(cellInd2)).norm();
+
+      hessVals.push_back(T(2*cellInd1,2*cellInd1,-intVal(0,0)));
+      hessVals.push_back(T(2*cellInd1+1,2*cellInd1,-intVal(1,0)));
+      hessVals.push_back(T(2*cellInd1,2*cellInd1+1,-intVal(0,1)));
+      hessVals.push_back(T(2*cellInd1+1,2*cellInd1+1,-intVal(1,1)));
+
+      hessVals.push_back(T(2*cellInd1,2*cellInd2,intVal(0,0)));
+      hessVals.push_back(T(2*cellInd1+1,2*cellInd2,intVal(1,0)));
+      hessVals.push_back(T(2*cellInd1,2*cellInd2+1,intVal(0,1)));
+      hessVals.push_back(T(2*cellInd1+1,2*cellInd2+1,intVal(1,1)));
+
+    }
+  }
+
+  Eigen::SparseMatrix<double> hess(numCells,numCells);
+  hess.setFromTriplets(hessVals.begin(), hessVals.end());
+
+  return hess;
 
 }
 

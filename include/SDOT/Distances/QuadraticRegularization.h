@@ -1,12 +1,6 @@
 #ifndef DISTANCES_QUADRATICREGULARIZATION_H
 #define DISTANCES_QUADRATICREGULARIZATION_H
 
-#include <type_traits>
-
-#include "SDOT/Distances/TriangularQuadrature.h"
-#include "SDOT/Distances/RectangularQuadrature.h"
-#include "SDOT/Distances/LineQuadrature.h"
-
 #include <Eigen/Core>
 
 namespace sdot {
@@ -136,80 +130,26 @@ public:
                                              Eigen::Vector2d const& pt2,
                                              double penaltyCoeff=1);
 
-  /** Uses quadrature to compute an integral of \f$ f(w_i-c(x,x_i))\f$ over a triangle. */
-  template<typename FunctionType>
-  static typename std::invoke_result<FunctionType,Eigen::Vector2d>::type GenericTriangularIntegral(FunctionType f,
-                                          Eigen::Vector2d const& pt1,
-                                          Eigen::Vector2d const& pt2,
-                                          Eigen::Vector2d const& pt3)
-  {
-      Eigen::Matrix2d A(2,2); // 2x2 matrix transforming reference coordinates to spatial coordinates
 
-      A << pt2(0)-pt1(0), pt3(0)-pt1(0),
-           pt2(1)-pt1(1), pt3(1)-pt1(1);
+  static Eigen::Matrix2d TriangularIntegralPointHessDiag(double wi,
+                                                    Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                                    Eigen::Vector2d const& pt1,
+                                                    Eigen::Vector2d const& pt2,
+                                                    Eigen::Vector2d const& pt3,
+                                                    double penaltyCoeff=1);
 
-      double jacDet =  (pt2(0)-pt1(0))*(pt3(1)-pt1(1)) - (pt3(0)-pt1(0))*(pt2(1)-pt1(1));
+  static Eigen::Matrix2d RectangularIntegralPointHessDiag(double wi,
+                                                  Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                                  Eigen::Vector2d const& pt1,
+                                                  Eigen::Vector2d const& pt2,
+                                                  double penaltyCoeff=1);
 
-      Eigen::Matrix2Xd quadPts;
-      Eigen::VectorXd quadWts;
-      std::tie(quadPts, quadWts) = TriangularQuadrature::Get(7);
-
-      typename std::invoke_result<FunctionType,Eigen::Vector2d>::type output = quadWts(0)*f(pt1 + A*quadPts.col(0));
-
-      for(int i=1; i<quadWts.size(); ++i){
-        output += quadWts(i)*f(pt1 + A*quadPts.col(i)); // map pt in reference triangle to real coordinates
-      }
-
-      output *= jacDet;
-      return output;
-  };
-
-  /** Uses quadrature to compute an integral of \f$ f(w_i-c(x,x_i))\f$ over a line segment. */
-  template<typename FunctionType>
-  static typename std::invoke_result<FunctionType,Eigen::Vector2d>::type GenericLineIntegral(FunctionType f,
-                                    Eigen::Vector2d const& pt1,
-                                    Eigen::Vector2d const& pt2)
-  {
-      Eigen::Vector2d diff = pt2-pt1;
-      double segLength = diff.norm();
-
-
-      Eigen::VectorXd quadPts, quadWts;
-      std::tie(quadPts, quadWts) = LineQuadrature::Get(7);
-
-      typename std::invoke_result<FunctionType,Eigen::Vector2d>::type output = quadWts(0)*f(pt1 + diff*quadPts(0));
-
-      for(int i=1; i<quadWts.size(); ++i){
-        output += quadWts(i)*f(pt1 + diff*quadPts(i)); // map pt in reference triangle to real coordinates
-      }
-
-      output *= segLength;
-      return output;
-  };
-
-  /** Uses quadrature to compute an integral of \f$ f(w_i-c(x,x_i))\f$ over a triangle. */
-  template<typename FunctionType>
-  static typename std::invoke_result<FunctionType,Eigen::Vector2d>::type GenericRectangularIntegral(FunctionType f,
-                                         Eigen::Vector2d const& pt1,
-                                         Eigen::Vector2d const& pt2)
-  {
-
-      Eigen::Matrix2Xd quadPts;
-      Eigen::VectorXd quadWts;
-      std::tie(quadPts, quadWts) = RectangularQuadrature::Get(7);
-
-      Eigen::Vector2d scale = pt2-pt1;
-
-      typename std::invoke_result<FunctionType,Eigen::Vector2d>::type output = quadWts(0)*f(pt1 + scale.asDiagonal()*quadPts.col(0));
-
-
-      for(int i=1; i<quadWts.size(); ++i){
-        output += quadWts(i)*f(pt1 + scale.asDiagonal()*quadPts.col(i)); // map pt in reference triangle to real coordinates
-      }
-
-      output *= scale.prod();
-      return output;
-  };
+  static Eigen::Matrix2d LineIntegralPointHess(double                 wi,
+                                  Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                  Eigen::Ref<const Eigen::Vector2d> const& xj,
+                                  Eigen::Vector2d const& pt1,
+                                  Eigen::Vector2d const& pt2,
+                                  double penaltyCoeff=1);
 
 }; // class Wasserstein2
 

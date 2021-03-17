@@ -103,6 +103,13 @@ public:
                                   Eigen::Vector2d const& pt2,
                                   double penaltyCoeff=1);
 
+  static Eigen::Matrix2d LineIntegralPointHess(double                 wi,
+                                  Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                  Eigen::Ref<const Eigen::Vector2d> const& xj,
+                                  Eigen::Vector2d const& pt1,
+                                  Eigen::Vector2d const& pt2,
+                                  double penaltyCoeff=1);
+
 
 
 
@@ -135,6 +142,21 @@ public:
                                              Eigen::Vector2d const& pt1,
                                              Eigen::Vector2d const& pt2,
                                              double penaltyCoeff=1);
+
+  static Eigen::Matrix2d TriangularIntegralPointHessDiag(double wi,
+                                                     Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                                     Eigen::Vector2d const& pt1,
+                                                     Eigen::Vector2d const& pt2,
+                                                     Eigen::Vector2d const& pt3,
+                                                     double penaltyCoeff=1);
+
+  static Eigen::Matrix2d RectangularIntegralPointHessDiag(double wi,
+                                                   Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                                   Eigen::Vector2d const& pt1,
+                                                   Eigen::Vector2d const& pt2,
+                                                   double penaltyCoeff=1);
+
+
 }; // class Wasserstein2
 
 }// namespace distances
