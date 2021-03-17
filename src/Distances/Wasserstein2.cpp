@@ -12,6 +12,10 @@ double Wasserstein2::Derivative(double z){
   return 1;
 };
 
+double Wasserstein2::Derivative2(double z){
+  return 0.0;
+};
+
 double Wasserstein2::TriangularIntegral(double wi,
                                         Eigen::Ref<const Eigen::Vector2d> const& xi,
                                         Eigen::Vector2d const& pt1,

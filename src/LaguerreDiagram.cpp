@@ -329,9 +329,11 @@ void LaguerreDiagram::CreateUnboundedDiagram(Eigen::Matrix2Xd const& pts,
   assert(costs.size()==numPts);
   unboundedDiagram.clear();
 
+  double  minCost = costs.minCoeff();
+
   //std::vector<Site_2> wpoints(numPts);
   for(unsigned int i=0; i<numPts; ++i){
-    unboundedDiagram.insert( Site_2(Point_2(pts(0,i), pts(1,i)), costs(i)) )->dual()->info()= i;
+    unboundedDiagram.insert( Site_2(Point_2(pts(0,i), pts(1,i)), 1.0+minCost+costs(i)) )->dual()->info()= i;
   }
 
   assert(unboundedDiagram.is_valid());

@@ -392,6 +392,8 @@ Eigen::SparseMatrix<double> SemidiscreteOT<ConjugateFunctionType>::ComputeHessia
   // For unbalanced transport, the Diagonal of the hessian has an additional term
   for(unsigned int cellInd=0; cellInd<numCells; ++cellInd) {
 
+    diagVals(cellInd) -= ConjugateFunctionType::Derivative2(-prices(cellInd))*discrProbs(cellInd);
+
     auto triFunc = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2, Eigen::Vector2d const& pt3)
       {
         return ConjugateFunctionType::TriangularIntegralDeriv2(prices(cellInd), discrPts.col(cellInd), pt1,pt2,pt3);
@@ -533,14 +535,8 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT<ConjugateFunctionType>::Solve(
     end = std::chrono::steady_clock::now();
     std::chrono::duration<double> sub_time = end-start;
 
-    // Crude method (kind of like a line search) for ensuring the prices are positive
     newX = x+step;
-    while(newX.minCoeff()<1e-15){
-      if(printLevel>1)
-        std::cout << "            Halving step because of positivity constraint." << std::endl;
-      step *= 0.5;
-      newX = x+step;
-    }
+
 
     // Try constructing the new Laguerre diagram.  If we can't then shrink the trust region size
     // try{

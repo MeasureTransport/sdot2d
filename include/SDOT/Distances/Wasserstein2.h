@@ -29,6 +29,9 @@ public:
   /** Evaluates the derivative of the conjugate function \f$\frac{\partial}{\partial z}F^\ast(z)\f$ at a point \f$z\f$. */
   static double Derivative(double z);
 
+  /** Evaluates the second derivative of the conjugate function \f$\frac{\partial}{\partial z}F^\ast(z)\f$ at a point \f$z\f$. */
+  static double Derivative2(double z);
+
   /**
   Returns
   \f[
