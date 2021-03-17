@@ -124,13 +124,13 @@ public:
 
       Eigen::Matrix2Xd quadPts;
       Eigen::VectorXd quadWts;
-      std::tie(quadPts, quadWts) = TriangularQuadrature::Get(4);
+      std::tie(quadPts, quadWts) = TriangularQuadrature::Get(7);
 
       Eigen::VectorXd vals(quadWts.size());
       Eigen::Vector2d testPt(2);
       for(int i=0; i<quadWts.size(); ++i){
         testPt = pt1 + A*quadPts.col(i); // map pt in reference triangle to real coordinates
-        vals(i) = f(wi - 0.5*(testPt - xi).squaredNorm());
+        vals(i) = f(wi - (testPt - xi).squaredNorm());
       }
 
       return jacDet*quadWts.dot(vals);
@@ -149,13 +149,13 @@ public:
 
 
       Eigen::VectorXd quadPts, quadWts;
-      std::tie(quadPts, quadWts) = LineQuadrature::Get(4);
+      std::tie(quadPts, quadWts) = LineQuadrature::Get(7);
 
       Eigen::VectorXd vals(quadWts.size());
       Eigen::Vector2d testPt(2);
       for(int i=0; i<quadWts.size(); ++i){
         testPt = pt1 + diff*quadPts(i); // map pt in reference triangle to real coordinates
-        vals(i) = f(wi - 0.5*(testPt - xi).squaredNorm());
+        vals(i) = f(wi - (testPt - xi).squaredNorm());
       }
 
       return segLength*quadWts.dot(vals);
@@ -172,7 +172,7 @@ public:
 
       Eigen::Matrix2Xd quadPts;
       Eigen::VectorXd quadWts;
-      std::tie(quadPts, quadWts) = RectangularQuadrature::Get(4);
+      std::tie(quadPts, quadWts) = RectangularQuadrature::Get(7);
 
       Eigen::VectorXd vals(quadWts.size());
       Eigen::Vector2d testPt(2);
@@ -183,7 +183,7 @@ public:
 
         testPt = pt1 + scale.asDiagonal()*quadPts.col(i); // map pt in reference triangle to real coordinates
 
-        vals(i) = f(wi - 0.5*(testPt - xi).squaredNorm());
+        vals(i) = f(wi - (testPt - xi).squaredNorm());
       }
 
       return scale.prod()*quadWts.dot(vals);

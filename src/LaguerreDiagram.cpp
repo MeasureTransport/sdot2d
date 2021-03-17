@@ -331,8 +331,7 @@ void LaguerreDiagram::CreateUnboundedDiagram(Eigen::Matrix2Xd const& pts,
 
   //std::vector<Site_2> wpoints(numPts);
   for(unsigned int i=0; i<numPts; ++i){
-    assert(costs(i)>=0);
-    unboundedDiagram.insert( Site_2(Point_2(pts(0,i), pts(1,i)), std::sqrt(costs(i))) )->dual()->info()= i;
+    unboundedDiagram.insert( Site_2(Point_2(pts(0,i), pts(1,i)), costs(i)) )->dual()->info()= i;
   }
 
   assert(unboundedDiagram.is_valid());

@@ -8,13 +8,13 @@ double QuadraticRegularization::Evaluate(double z){
   if(z > -2){
     return 0.25*z*z+ z;
   }else{
-    return -1;
+    return -1.0;
   }
 };
 
 double QuadraticRegularization::Derivative(double z){
   if(z > -2){
-    return 0.5*z + 1;
+    return 0.5*z + 1.0;
   }else{
     return 0;
   }

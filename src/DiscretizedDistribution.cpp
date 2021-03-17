@@ -1,4 +1,5 @@
 #include "SDOT/DiscretizedDistribution.h"
+#include "SDOT/Assert.h"
 
 #include <iostream>
 using namespace sdot;
@@ -7,8 +8,8 @@ DiscretizedDistribution::DiscretizedDistribution(std::shared_ptr<RegularGrid> co
                                                  Eigen::MatrixXd              const& densIn) : Distribution2d(gridIn),
                                                                                                densVals(Normalize(grid,densIn))
 {
-  assert(densVals.rows()==grid->NumCells(0));
-  assert(densVals.cols()==grid->NumCells(1));
+  SDOT_ASSERT(densVals.rows()==grid->NumCells(0));
+  SDOT_ASSERT(densVals.cols()==grid->NumCells(1));
 };
 
 Eigen::MatrixXd DiscretizedDistribution::Normalize(std::shared_ptr<RegularGrid> const& grid,

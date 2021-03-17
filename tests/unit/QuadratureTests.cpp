@@ -68,7 +68,7 @@ TEST(Quadrature, GenericTriangle){
   double res = QuadraticRegularization::GenericTriangularIntegral(f, 0.0, xi, pt1, pt2, pt3);
   EXPECT_NEAR(0.5, res, 1e-8);
 
-  auto f2 = [](double z) { return -2.0*z; };
+  auto f2 = [](double z) { return -z; };
   res = QuadraticRegularization::GenericTriangularIntegral(f2, 0.0, xi, pt1, pt2, pt3);
   EXPECT_NEAR(1.0/6.0, res, 1e-8);
 }
@@ -78,12 +78,12 @@ TEST(Quadrature, GenericRectangularIntegral){
   auto f = [](double z) { return 1.0; };
 
   Eigen::Vector2d xi{0.0,0.0};
-  Eigen::Vector2d pt1{0.0,0.0}, pt2{1.0,1.0};
+  Eigen::Vector2d pt1{0.0,0.0}, pt2{2.0,2.0};
 
   double res = QuadraticRegularization::GenericRectangularIntegral(f, 0.0, xi, pt1, pt2);
-  EXPECT_NEAR(1.0, res, 1e-8);
+  EXPECT_NEAR(4.0, res, 1e-8);
 
-  auto f2 = [](double z) { return -2.0*z; };
+  auto f2 = [](double z) { return -z; };
   res = QuadraticRegularization::GenericRectangularIntegral(f2, 0.0, xi, pt1, pt2);
-  EXPECT_NEAR(2.0/3.0, res, 1e-8);
+  EXPECT_NEAR(32.0/3.0, res, 1e-8);
 }

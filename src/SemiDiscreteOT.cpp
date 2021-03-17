@@ -3,6 +3,7 @@
 
 #include "SDOT/Assert.h"
 #include "SDOT/Distances/Wasserstein2.h"
+#include "SDOT/Distances/QuadraticRegularization.h"
 
 #include <CGAL/Kernel/global_functions.h>
 
@@ -120,7 +121,8 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT<ConjugateFunctionType>::Compute
     //
     // double weightedArea  = lagDiag.IntegrateOverCell(cellInd, triArea, rectArea, dist);
 
-    objParts(cellInd) = prices(cellInd)*discrProbs(cellInd);// - prices(cellInd)*weightedArea;
+    objParts(cellInd) = -ConjugateFunctionType::Evaluate(-prices(cellInd))*discrProbs(cellInd);// - prices(cellInd)*weightedArea;
+
     gradient(cellInd) = ConjugateFunctionType::Derivative(-prices(cellInd))*discrProbs(cellInd);
 
     // if(weightedArea>0){
@@ -135,7 +137,6 @@ std::pair<double,Eigen::VectorXd> SemidiscreteOT<ConjugateFunctionType>::Compute
         };
 
       objParts(cellInd) += -lagDiag.IntegrateOverCell(cellInd, triFunc, rectFunc, dist);
-
 
       auto triFuncDeriv = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2, Eigen::Vector2d const& pt3)
         {
@@ -416,16 +417,15 @@ Eigen::SparseMatrix<double> SemidiscreteOT<ConjugateFunctionType>::ComputeHessia
       std::tie(cellInd2, srcPt, tgtPt) = edgeTuple;
 
       // Compute the integral of the target density along the edge
-      intVal = LineIntegral(prices(cellInd1), discrPts.col(cellInd1), srcPt, tgtPt)/(discrPts.col(cellInd1)-discrPts.col(cellInd2)).norm();
+      intVal = 0.5*LineIntegral(prices(cellInd1), discrPts.col(cellInd1), srcPt, tgtPt)/(discrPts.col(cellInd1)-discrPts.col(cellInd2)).norm();
 
       diagVals(cellInd1) -= intVal;
-
-      hessVals.push_back(T(cellInd1,cellInd2,0.25*intVal));
+      hessVals.push_back(T(cellInd1,cellInd2,intVal));
     }
   }
 
   for(int i=0; i<numCells; ++i){
-    hessVals.push_back(T(i,i,0.25*diagVals(i)));
+    hessVals.push_back(T(i,i, diagVals(i)));
   }
 
   Eigen::SparseMatrix<double> hess(numCells,numCells);
@@ -537,7 +537,7 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT<ConjugateFunctionType>::Solve(
     newX = x+step;
     while(newX.minCoeff()<1e-15){
       if(printLevel>1)
-        std::cout << "            Shrinking trust region because of positivity constraint." << std::endl;
+        std::cout << "            Halving step because of positivity constraint." << std::endl;
       step *= 0.5;
       newX = x+step;
     }
@@ -798,4 +798,5 @@ std::shared_ptr<LaguerreDiagram> SemidiscreteOT<ConjugateFunctionType>::BuildCen
 
 namespace sdot{
   template class SemidiscreteOT<sdot::distances::Wasserstein2>;
+  template class SemidiscreteOT<sdot::distances::QuadraticRegularization>;
 }
