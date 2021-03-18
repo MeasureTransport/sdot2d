@@ -5,6 +5,10 @@
 #include "SDOT/Distances/Wasserstein2.h"
 #include "SDOT/Distances/QuadraticRegularization.h"
 
+#include <Eigen/Core>
+#include <Eigen/SparseCholesky>
+#include <Eigen/Dense>
+
 #include <CGAL/Kernel/global_functions.h>
 
 #include <algorithm>
@@ -27,6 +31,8 @@ SemidiscreteOT<ConjugateFunctionType>::SemidiscreteOT(std::shared_ptr<Distributi
 
   SDOT_ASSERT(unbalancedPenalty>0);
 
+  CheckNormalization();
+
   // Check to make sure all the points are inside the grid domain
   for(unsigned int i=0; i<discrPts.cols(); ++i){
     SDOT_ASSERT(discrPts(0,i)>=grid->xMin);
@@ -34,6 +40,15 @@ SemidiscreteOT<ConjugateFunctionType>::SemidiscreteOT(std::shared_ptr<Distributi
     SDOT_ASSERT(discrPts(1,i)>=grid->yMin);
     SDOT_ASSERT(discrPts(1,i)<=grid->yMax);
   }
+}
+
+
+template<>
+void SemidiscreteOT<sdot::distances::Wasserstein2>::CheckNormalization()
+{
+  double discrSum = discrProbs.sum();
+  double contSum= dist->TotalMass();
+  SDOT_ASSERT(std::abs(discrSum-contSum)<1e-12);
 }
 
 template<typename ConjugateFunctionType>
@@ -106,6 +121,41 @@ Eigen::Matrix2Xd SemidiscreteOT<ConjugateFunctionType>::PointGradient(Eigen::Vec
 }
 
 template<typename ConjugateFunctionType>
+Eigen::Matrix2Xd SemidiscreteOT<ConjugateFunctionType>::LloydPointHessian() const
+{
+  return LloydPointHessian(optPrices, *lagDiag);
+}
+
+template<typename ConjugateFunctionType>
+Eigen::Matrix2Xd SemidiscreteOT<ConjugateFunctionType>::LloydPointHessian(Eigen::VectorXd const& prices,
+                                                                         LaguerreDiagram const& lagDiag) const
+{
+  const unsigned int numCells = discrPts.cols();
+  Eigen::Matrix2Xd hessVals(2,numCells);
+  Eigen::Matrix2d intVal(2,2);
+
+  // For unbalanced transport, the Diagonal of the hessian has an additional term
+  for(unsigned int cellInd=0; cellInd<numCells; ++cellInd) {
+
+    auto triFunc = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2, Eigen::Vector2d const& pt3)
+      {
+        return ConjugateFunctionType::TriangularIntegralPointHessDiag(prices(cellInd), discrPts.col(cellInd), pt1,pt2,pt3, unbalancedPenalty);
+      };
+    auto rectFunc = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2)
+      {
+        return ConjugateFunctionType::RectangularIntegralPointHessDiag(prices(cellInd), discrPts.col(cellInd), pt1,pt2, unbalancedPenalty);
+      };
+
+    intVal = -1.0*lagDiag.IntegrateOverCell(cellInd, triFunc, rectFunc, dist);
+    hessVals(0,cellInd)   =  intVal(0,0);
+    hessVals(1,cellInd)   =  intVal(1,1);
+  }
+
+  return hessVals;
+}
+
+
+template<typename ConjugateFunctionType>
 Eigen::SparseMatrix<double> SemidiscreteOT<ConjugateFunctionType>::PointHessian(Eigen::VectorXd const& prices,
                                                                                 LaguerreDiagram const& lagDiag) const
 {
@@ -135,6 +185,7 @@ Eigen::SparseMatrix<double> SemidiscreteOT<ConjugateFunctionType>::PointHessian(
     hessVals.push_back(T(2*cellInd+1,2*cellInd+1,intVal(1,1)));
   }
 
+
   ///////
   // Off-diagonal parts
 
@@ -154,13 +205,13 @@ Eigen::SparseMatrix<double> SemidiscreteOT<ConjugateFunctionType>::PointHessian(
       intVal = LineIntegral(func, srcPt, tgtPt)/(discrPts.col(cellInd1)-discrPts.col(cellInd2)).norm();
 
       hessVals.push_back(T(2*cellInd1,2*cellInd1,-intVal(0,0)));
-      hessVals.push_back(T(2*cellInd1+1,2*cellInd1,-intVal(1,0)));
-      hessVals.push_back(T(2*cellInd1,2*cellInd1+1,-intVal(0,1)));
+      hessVals.push_back(T(2*cellInd1+1,2*cellInd1,-intVal(0,1)));
+      hessVals.push_back(T(2*cellInd1,2*cellInd1+1,-intVal(1,0)));
       hessVals.push_back(T(2*cellInd1+1,2*cellInd1+1,-intVal(1,1)));
 
       hessVals.push_back(T(2*cellInd1,2*cellInd2,intVal(0,0)));
-      hessVals.push_back(T(2*cellInd1+1,2*cellInd2,intVal(1,0)));
-      hessVals.push_back(T(2*cellInd1,2*cellInd2+1,intVal(0,1)));
+      hessVals.push_back(T(2*cellInd1+1,2*cellInd2,intVal(0,1)));
+      hessVals.push_back(T(2*cellInd1,2*cellInd2+1,intVal(1,0)));
       hessVals.push_back(T(2*cellInd1+1,2*cellInd2+1,intVal(1,1)));
 
     }
@@ -639,35 +690,61 @@ std::shared_ptr<LaguerreDiagram> SemidiscreteOT<ConjugateFunctionType>::BuildCen
 {
 
   unsigned int maxIts =  GetOpt("Lloyd Steps", opts, 100);
-  double tol = GetOpt("Lloyd Tol", opts, 1e-3);
+  double xtol = GetOpt("Lloyd Tol", opts, 1e-8);
+  double gtol = xtol;
+
+  auto optIt = opts.find("Print Level");
+  if(optIt == opts.end())
+    opts["Print Level"] = 0;
 
   const unsigned int numPts = pointProbs.size();
   SDOT_ASSERT(numPts==initialPoints.cols());
 
-  double resid = tol + 1.0;
+  double resid = xtol + 1.0;
 
   Eigen::MatrixXd newPts;
-
+  Eigen::VectorXd prices = Eigen::VectorXd::Ones(numPts);
+  double dualObj;
   Eigen::MatrixXd pts = initialPoints;
   std::shared_ptr<SemidiscreteOT> ot = std::make_shared<SemidiscreteOT>(dist, initialPoints, pointProbs);
 
-  std::cout << "Computing constrained centroidal diagram." << std::endl;
+  std::cout << "Computing constrained centroidal diagram..." << std::endl;
+  std::cout << "  Iteration,  ||g||,   max(dx)" << std::endl;
+
   for(unsigned int i=0; i<maxIts; ++i){
     SDOT_ASSERT(ot);
 
-    ot->Solve(Eigen::VectorXd::Ones(numPts), opts);
-    newPts = ot->Diagram()->Centroids(dist);
-    resid = (newPts - pts).cwiseAbs().maxCoeff();;
+    std::tie(prices, dualObj) = ot->Solve(prices, opts);
 
-    if(resid<tol){
-      std::cout << "Converged with a final step of " << resid << std::endl;
+    Eigen::MatrixXd pointGrad = ot->PointGradient();
+    Eigen::Map<Eigen::VectorXd> pointGradVec(pointGrad.data(),2*pointGrad.cols());
+
+    double stepSize = 1.0;
+    Eigen::Matrix2Xd dir = -pointGrad.array()*(ot->LloydPointHessian()+1e-12*Eigen::MatrixXd::Ones(2,numPts)).array().inverse();
+
+    newPts = pts + stepSize*dir;
+
+    // Backtrack until all the points are  in the domain
+    while((newPts.row(0).minCoeff()<ot->grid->xMin)||(newPts.row(0).maxCoeff()>ot->grid->xMax)||(newPts.row(1).minCoeff()<ot->grid->yMin)||(newPts.row(1).maxCoeff()>ot->grid->yMax)){
+      stepSize *= 0.75;
+      newPts = pts + stepSize*dir;
+    }
+
+    resid = (newPts - pts).cwiseAbs().maxCoeff();;
+    std::printf("  %9d, %5.3e, %5.3e\n", i, pointGrad.norm(), resid);
+
+    if(resid<xtol){
+      std::cout << "Converged due to small stepsize." << std::endl;
+      return ot->Diagram();
+    }
+
+    if((pointGradVec.norm()/(2*numPts))<gtol){
+      std::cout << "Converged due to small gradient." << std::endl;
       return ot->Diagram();
     }
 
     pts = newPts;
     ot->SetPoints(pts);
-
-    std::cout << "  After " << i << " iterations, change in position = " << resid << std::endl;
   }
 
   std::cout << "WARNING: Did not converge to constrained centroidal diagram." << std::endl;

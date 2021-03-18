@@ -77,6 +77,12 @@ namespace sdot{
 
     Eigen::SparseMatrix<double> PointHessian() const;
 
+    Eigen::Matrix2Xd LloydPointHessian(Eigen::VectorXd const& prices,
+                                       LaguerreDiagram const& lagDiag) const;
+
+    Eigen::Matrix2Xd LloydPointHessian() const;
+
+
     /** Sets the weight on the marginal discrepancy penalties in the unbalanced
         setting.  Has no impact on  the usual Wasserstein -2 balanced  case.
     */
@@ -172,6 +178,8 @@ namespace sdot{
     for a line segment \f$\partial \Omega\f$ between two cells in the Laguerre
     diagram.
     */
+
+    void CheckNormalization(){};
 
     template<typename FunctionType>
     typename std::invoke_result<FunctionType,Eigen::Vector2d,Eigen::Vector2d>::type LineIntegral(FunctionType f,

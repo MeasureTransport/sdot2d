@@ -25,7 +25,7 @@ for i in range(Ns[0]):
 
 
 # Set the options for Lloyd's algorithm and the underlying optimization problem for the node prices.
-opts = {'Lloyd Steps':200, 'Lloyd Tol':1e-3, 'Max Steps': 100}
+opts = {'Lloyd Steps':200, 'Lloyd Tol':1e-6, 'Max Steps': 500}
 
 # Construct the centroidal diagram with capacity constraints
 dist = ot.DiscretizedDistribution(grid,densVals)

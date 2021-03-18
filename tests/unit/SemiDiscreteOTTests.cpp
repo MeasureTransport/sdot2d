@@ -23,7 +23,7 @@ TEST(SemiDiscreteOT, Objective)
   BoundingBox bbox(0.0, 1.0, 0.0, 1.0);
   int N = 1;
   auto grid = std::make_shared<RegularGrid>(bbox, N, N);
-  auto dist = std::make_shared<DiscretizedDistribution>(grid, Eigen::MatrixXd::Ones(N,N));
+  auto dist = std::make_shared<DiscretizedDistribution>(grid, Eigen::MatrixXd::Ones(N,N)/(N*N));
 
   SemidiscreteOT<Wasserstein2> solver(dist, pts, probs);
 
@@ -77,7 +77,7 @@ TEST(SemiDiscreteOT, Objective_QuadraticRegularization)
   BoundingBox bbox(0.0, 1.0, 0.0, 1.0);
   int N = 100;
   auto grid = std::make_shared<RegularGrid>(bbox, N, N);
-  auto dist = std::make_shared<DiscretizedDistribution>(grid, Eigen::MatrixXd::Ones(N,N));
+  auto dist = std::make_shared<DiscretizedDistribution>(grid, Eigen::MatrixXd::Ones(N,N)/(N*N));
 
   SemidiscreteOT<QuadraticRegularization> solver(dist, pts, probs);
 
@@ -125,15 +125,20 @@ TEST(SemiDiscreteOT, Construction)
   Eigen::VectorXd probs(2);
   probs << 0.75,0.25;
 
+  OptionList opts;
+  opts["GTol Abs"] = 1e-15;
+  opts["XTol Abs"] = 1e-15;
+  opts["FTol Abs"] = 0.0;
+
   // Construct the continuous distribution
   auto grid = std::make_shared<RegularGrid>(0.0, 0.0, 1.0, 1.0, 1, 1);
-  auto dist = std::make_shared<DiscretizedDistribution>(grid, 5.0*Eigen::MatrixXd::Ones(1,1));
+  auto dist = std::make_shared<DiscretizedDistribution>(grid, Eigen::MatrixXd::Ones(1,1));
 
   SemidiscreteOT<Wasserstein2> solver(dist, pts, probs);
 
   Eigen::VectorXd optPrices;
   double obj;
-  std::tie(optPrices,obj) = solver.Solve(Eigen::VectorXd::Ones(pts.cols()));
+  std::tie(optPrices,obj) = solver.Solve(Eigen::VectorXd::Ones(pts.cols()), opts);
 
   auto diag = solver.Diagram();
   assert(diag != nullptr);
@@ -146,7 +151,9 @@ TEST(SemiDiscreteOT, Construction)
 
 
 
+  // Check the point gradient
   Eigen::Matrix2Xd pointGrad = solver.PointGradient();
+  Eigen::SparseMatrix<double> pointHess = solver.PointHessian();
 
   Eigen::VectorXd stepDir = Eigen::VectorXd::Random(2*pts.cols());
   stepDir /= stepDir.norm();
@@ -157,12 +164,44 @@ TEST(SemiDiscreteOT, Construction)
   SemidiscreteOT<Wasserstein2> solver2(dist, pts2, probs);
   Eigen::VectorXd optPrices2;
   double obj2;
-  std::tie(optPrices2,obj2) = solver2.Solve(Eigen::VectorXd::Ones(pts.cols()));
+  std::tie(optPrices2,obj2) = solver2.Solve(Eigen::VectorXd::Ones(pts.cols()), opts);
+  Eigen::Matrix2Xd pointGrad2 = solver2.PointGradient();
 
   double fdDeriv = (obj2-obj)/stepSize;
   double dirDeriv = Eigen::Map<Eigen::VectorXd>(pointGrad.data(), 2*pts.cols()).dot(stepDir);
   EXPECT_NEAR(fdDeriv, dirDeriv, 1e-5);
+
+  Eigen::MatrixXd hessActFD = (pointGrad2-pointGrad)/stepSize;
+
+  Eigen::VectorXd hessAct = pointHess*stepDir;
+
+  EXPECT_NEAR(hessActFD(0,0), hessAct(0), 1e-3);
+  EXPECT_NEAR(hessActFD(1,0), hessAct(1), 1e-3);
+  EXPECT_NEAR(hessActFD(0,1), hessAct(2), 1e-3);
+  EXPECT_NEAR(hessActFD(1,1), hessAct(3), 1e-3);
 }
+
+
+
+TEST(SemiDiscreteOT, Centroidal)
+{
+  Eigen::MatrixXd pts(2,2);
+  pts << 0.1, 0.9,
+         0.5, 0.5;
+
+  Eigen::VectorXd probs(2);
+  probs << 0.75,0.25;
+
+  // Construct the continuous distribution
+  auto grid = std::make_shared<RegularGrid>(0.0, 0.0, 1.0, 1.0, 1, 1);
+  auto dist = std::make_shared<DiscretizedDistribution>(grid, Eigen::MatrixXd::Ones(1,1));
+
+
+  auto diag = SemidiscreteOT<Wasserstein2>::BuildCentroidal(dist, pts, probs);
+}
+
+
+
 
 TEST(SemiDiscreteOT, Construction_QuadraticRegularization)
 {

@@ -127,7 +127,7 @@ Eigen::Matrix2d Wasserstein2::TriangularIntegralPointHessDiag(double wi,
                                                   Eigen::Vector2d const& pt3,
                                                   double penaltyCoeff)
 {
-  return 2.0*Eigen::Matrix2d::Identity()*Wasserstein2::RectangularIntegralDeriv(wi, xi, pt1, pt2, penaltyCoeff);
+  return 2.0*Eigen::Matrix2d::Identity()*Wasserstein2::TriangularIntegralDeriv(wi, xi, pt1, pt2, pt3, penaltyCoeff);
 }
 
 Eigen::Matrix2d Wasserstein2::RectangularIntegralPointHessDiag(double wi,

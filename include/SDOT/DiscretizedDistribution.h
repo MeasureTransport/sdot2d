@@ -26,6 +26,9 @@ namespace sdot{
 
     virtual double Density(unsigned int xInd, unsigned int yInd) const override;
 
+    virtual double TotalMass() const override;
+
+
   protected:
 
     /** Normalizes density values so that the density integrates to 1 over the
