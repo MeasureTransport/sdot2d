@@ -25,7 +25,8 @@ LaguerreDiagram::LaguerreDiagram(double xBndLeftIn,   double xBndRightIn,
                                  Eigen::Matrix2Xd const& pts,
                                  Eigen::VectorXd  const& costs) : bbox(xBndLeftIn, xBndRightIn, yBndBottomIn, yBndTopIn),
                                                                   infDist(2.0*std::sqrt(std::pow(xBndRightIn-xBndLeftIn,2.0) + std::pow(yBndTopIn-yBndBottomIn,2.0))),
-                                                                  seedPts(pts)
+                                                                  seedPts(pts),
+                                                                  prices(costs)
 {
   numPts = pts.cols();
   assert(costs.size()==numPts);
@@ -121,6 +122,12 @@ Eigen::Matrix2Xd LaguerreDiagram::SeedPts() const
   }
 
   return pts;
+}
+
+
+Eigen::VectorXd const& LaguerreDiagram::Prices() const
+{
+  return prices;
 }
 
 Eigen::Vector2d LaguerreDiagram::CellCentroid(unsigned int cellInd) const

@@ -75,6 +75,8 @@ bbox = ot.BoundingBox(xbnds[0],xbnds[1],ybnds[0],ybnds[1])
 grid = ot.RegularGrid(bbox, threshImg.shape[0], threshImg.shape[1])
 
 # Construct the centroidal diagram with capacity constraints
+threshImg /=  (grid.dx*grid.dy*np.sum(threshImg))
+print('Sum = ', grid.dx*grid.dy*np.sum(threshImg))
 dist = ot.DiscretizedDistribution(grid,threshImg)
 
 opts = {'Lloyd Steps':200, 'Lloyd Tol':1e-3, 'Max Steps': 10, 'GTol Abs':1e-2}

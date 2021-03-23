@@ -48,7 +48,7 @@ void SemidiscreteOT<sdot::distances::Wasserstein2>::CheckNormalization()
 {
   double discrSum = discrProbs.sum();
   double contSum= dist->TotalMass();
-  SDOT_ASSERT(std::abs(discrSum-contSum)<1e-12);
+  SDOT_ASSERT(std::abs(discrSum-contSum)<1e-10);
 }
 
 template<typename ConjugateFunctionType>
@@ -423,11 +423,11 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT<ConjugateFunctionType>::Solve(
   const double gtol_abs = GetOpt("GTol Abs", options, 2e-4*std::sqrt(double(dim)));
   const double ftol_abs = GetOpt("FTol Abs", options, 1e-11);
 
-  const double acceptRatio = GetOpt("Accept Ratio", options, 1e-4);//0.1;
-  const double shrinkRatio = GetOpt("Shrink Ratio", options, 1e-4);//0.1;
-  const double growRatio = GetOpt("Grow Ratio", options, 0.75);
+  const double acceptRatio = GetOpt("Accept Ratio", options, 0.1);//0.1;
+  const double shrinkRatio = GetOpt("Shrink Ratio", options, 0.1);//0.1;
+  const double growRatio = GetOpt("Grow Ratio", options, 0.9);
   const double growRate = GetOpt("Grow Rate", options, 2.0);
-  const double shrinkRate = GetOpt("Shrink Rate", options, 0.25);
+  const double shrinkRate = GetOpt("Shrink Rate", options, 0.5);
   const double maxRadius = GetOpt("Max Radius", options, 10);
 
   SDOT_ASSERT(shrinkRatio>=acceptRatio);
@@ -531,10 +531,10 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT<ConjugateFunctionType>::Solve(
     newGradNorm = newGrad.norm();
 
     // Use the quadratic submodel to predict the change in the gradient norm
-    double modDelta = gradNorm - (grad + hess.selfadjointView<Eigen::Lower>()*step).norm();
-    double trueDelta = gradNorm - newGradNorm;
-    //double trueDelta = newF-fval;
-    //double modDelta = grad.dot(step) + 0.5*step.dot(hess.selfadjointView<Eigen::Lower>()*step);
+    //double modDelta = gradNorm - (grad + hess.selfadjointView<Eigen::Lower>()*step).norm();
+    //double trueDelta = gradNorm - newGradNorm;
+    double trueDelta = newF-fval;
+    double modDelta = grad.dot(step) + 0.5*step.dot(hess.selfadjointView<Eigen::Lower>()*step);
 
     double rho = trueDelta/modDelta;
     //std::cout << "Model, Truth = " << modDelta << ", " << trueDelta << std::endl;

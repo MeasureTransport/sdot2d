@@ -194,6 +194,9 @@ public:
   /** Returns the seed points that were used to construct the Laguerre diagram. */
   Eigen::Matrix2Xd SeedPts() const;
 
+  /** Returns the prices associated with each Laguerre cell. */
+  Eigen::VectorXd const& Prices() const;
+
   /** Returns the number of Laguerre cells. */
   int NumCells() const{return laguerreCells.size();};
 
@@ -251,6 +254,8 @@ private:
   int numPts;
 
   Eigen::Matrix2Xd seedPts;
+
+  Eigen::VectorXd prices;
 
   /// A vector of bounded Laguerre cells.  These defines bounded diagram.
   std::vector<std::shared_ptr<Polygon_2>> laguerreCells;
