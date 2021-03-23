@@ -166,6 +166,70 @@ Eigen::Vector2d QuadraticRegularization::RectangularIntegralPointGrad(double wi,
  return RectangularQuadrature::Integrate(func, pt1,pt2);
 }
 
+
+double QuadraticRegularization::TriangularIntegralMarginalMass(double wi,
+                                          Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                          Eigen::Vector2d const& pt1,
+                                          Eigen::Vector2d const& pt2,
+                                          Eigen::Vector2d const& pt3,
+                                          double penaltyCoeff)
+{
+  auto func = [&](Eigen::Vector2d const& x)
+    {
+      return QuadraticRegularization::Derivative(wi - (x - xi).squaredNorm(), penaltyCoeff);
+    };
+
+  return TriangularQuadrature::Integrate(func, pt1,pt2,pt3);
+}
+
+
+
+double QuadraticRegularization::RectangularIntegralMarginalMass(double wi,
+                                           Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                           Eigen::Vector2d const& pt1,
+                                           Eigen::Vector2d const& pt2,
+                                           double penaltyCoeff)
+{
+  auto func = [&](Eigen::Vector2d const& x)
+    {
+      return QuadraticRegularization::Derivative(wi - (x - xi).squaredNorm(), penaltyCoeff);
+    };
+
+   return RectangularQuadrature::Integrate(func, pt1,pt2);
+}
+
+Eigen::Vector2d QuadraticRegularization::TriangularIntegralMarginalCentroid(double wi,
+                                          Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                          Eigen::Vector2d const& pt1,
+                                          Eigen::Vector2d const& pt2,
+                                          Eigen::Vector2d const& pt3,
+                                          double penaltyCoeff)
+{
+  auto func = [&](Eigen::Vector2d const& x)
+    {
+      return (x*QuadraticRegularization::Derivative(wi - (x - xi).squaredNorm(), penaltyCoeff)).eval();
+    };
+
+  return TriangularQuadrature::Integrate(func, pt1,pt2,pt3);
+}
+
+
+
+Eigen::Vector2d QuadraticRegularization::RectangularIntegralMarginalCentroid(double wi,
+                                           Eigen::Ref<const Eigen::Vector2d> const& xi,
+                                           Eigen::Vector2d const& pt1,
+                                           Eigen::Vector2d const& pt2,
+                                           double penaltyCoeff)
+{
+  auto func = [&](Eigen::Vector2d const& x)
+    {
+      return (x*QuadraticRegularization::Derivative(wi - (x - xi).squaredNorm(), penaltyCoeff)).eval();
+    };
+
+   return RectangularQuadrature::Integrate(func, pt1,pt2);
+}
+
+
 Eigen::Matrix2d QuadraticRegularization::TriangularIntegralPointHessDiag(double wi,
                                                   Eigen::Ref<const Eigen::Vector2d> const& xi,
                                                   Eigen::Vector2d const& pt1,

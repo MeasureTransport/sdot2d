@@ -215,7 +215,7 @@ TEST(SemiDiscreteOT, Construction_QuadraticRegularization)
   // Construct the continuous distribution
   unsigned int  N = 1;
   auto grid = std::make_shared<RegularGrid>(0.0, 0.0, 1.0, 1.0, N, N);
-  auto dist = std::make_shared<DiscretizedDistribution>(grid, Eigen::MatrixXd::Ones(N,N));
+  auto dist = std::make_shared<DiscretizedDistribution>(grid, Eigen::MatrixXd::Ones(N,N)/(grid->dx*grid->dy*N*N));
 
 
   double penalty = 10.0;
@@ -267,4 +267,12 @@ TEST(SemiDiscreteOT, Construction_QuadraticRegularization)
   EXPECT_NEAR(hessActFD(0,1), hessAct(2), 2e-2);
   EXPECT_NEAR(hessActFD(1,1), hessAct(3), 2e-2);
 
+
+  // Compute the centroids
+  Eigen::Matrix2Xd centroids = solver.Diagram()->Centroids(dist);
+  Eigen::Matrix2Xd margCentroids = solver.MarginalCentroids();
+  for(int i=0; i<centroids.cols(); ++i){
+    EXPECT_NEAR(centroids(i,0),margCentroids(i,0),1e-2);
+    EXPECT_NEAR(centroids(i,1),margCentroids(i,1),1e-2);
+  }
 }

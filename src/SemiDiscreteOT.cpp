@@ -770,6 +770,53 @@ std::shared_ptr<LaguerreDiagram> SemidiscreteOT<ConjugateFunctionType>::BuildCen
   return BuildCentroidal(dist, probs, opts);
 }
 
+template<typename ConjugateFunctionType>
+Eigen::Matrix2Xd SemidiscreteOT<ConjugateFunctionType>::MarginalCentroids(Eigen::VectorXd const& prices,
+                                                                          LaguerreDiagram const& lagDiag) const
+{
+  int numCells =  lagDiag.NumCells();
+  Eigen::Matrix2Xd centroids(2,numCells);
+
+  // Loop over all ofthe cells
+  for(int i=0; i<numCells; ++i){
+
+    auto triFunc = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2, Eigen::Vector2d const& pt3)
+      {
+        return ConjugateFunctionType::TriangularIntegralMarginalCentroid(prices(i), discrPts.col(i), pt1,pt2,pt3,unbalancedPenalty);
+      };
+    auto rectFunc = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2)
+      {
+        return ConjugateFunctionType::RectangularIntegralMarginalCentroid(prices(i), discrPts.col(i), pt1,pt2,unbalancedPenalty);
+      };
+
+
+    centroids.col(i) = lagDiag.IntegrateOverCell(i, triFunc, rectFunc, dist);
+
+
+    auto triFunc2 = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2, Eigen::Vector2d const& pt3)
+      {
+        return ConjugateFunctionType::TriangularIntegralMarginalMass(prices(i), discrPts.col(i), pt1,pt2,pt3,unbalancedPenalty);
+      };
+    auto rectFunc2 = [&](Eigen::Vector2d const& pt1, Eigen::Vector2d const& pt2)
+      {
+        return ConjugateFunctionType::RectangularIntegralMarginalMass(prices(i), discrPts.col(i), pt1,pt2,unbalancedPenalty);
+      };
+
+    centroids.col(i) /= lagDiag.IntegrateOverCell(i, triFunc2, rectFunc2, dist);
+  }
+
+  return centroids;
+}
+
+template<>
+Eigen::Matrix2Xd SemidiscreteOT<sdot::distances::Wasserstein2>::MarginalCentroids(Eigen::VectorXd const& prices,
+                                                                                  LaguerreDiagram const& lagDiag) const
+{
+  return lagDiag.Centroids(dist);
+}
+
+
+
 
 namespace sdot{
   template class SemidiscreteOT<sdot::distances::Wasserstein2>;

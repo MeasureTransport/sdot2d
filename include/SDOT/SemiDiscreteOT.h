@@ -129,8 +129,21 @@ namespace sdot{
     std::pair<double, Eigen::VectorXd> ComputeGradient(Eigen::VectorXd const& prices,
                                                        LaguerreDiagram const& lagDiag) const;
 
-    /** Computes the weighted centroids, e.g.,  of each Laguerre cell. */
-    Eigen::Matrix2Xd WeightedCentroids(LaguerreDiagram const& lagDiag) const;
+    /** Computes the weighted centroids, e.g.,  of each Laguerre cell with
+        respect to the continuous marginal of the optimal coupling. For the
+        standard balanced OT case, this is simply the centroid of the Laguerre
+        cell weighted by the continuous distribution used in SDOT problem.
+        In the unbalanced OT setting however, the marginal is not guaranteed to
+        be exactly the same as the continuous distribution and this function will
+        return something different than calling LaguerreDiagram::Centroids() with
+        the continuous distribution.  See (3.4b) in Theorem 3.2 of
+        [Bourne et al., 2018] for more details on the marginal distribution
+        in the unbalanced setting.
+    */
+    Eigen::Matrix2Xd MarginalCentroids(Eigen::VectorXd const& prices,
+                                       LaguerreDiagram const& lagDiag) const;
+
+    Eigen::Matrix2Xd MarginalCentroids() const{return MarginalCentroids(optPrices,*lagDiag);};
 
     /** Given an existing Laguerre diagram, this function computes the Hessian by
         integrating over each pair of Laguerre cell boundaries.
