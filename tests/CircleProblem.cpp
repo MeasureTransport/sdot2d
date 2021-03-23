@@ -49,7 +49,7 @@ int main(int argc, char* argv[])
   auto grid = std::make_shared<RegularGrid>(domain(0,0),domain(1,0), domain(0,2), domain(1,2), N, N);
 
   // Unnormalized density.  Will be normalized in DiscretizedDistribution constructor
-  Eigen::MatrixXd density = 1.0*Eigen::MatrixXd::Ones(grid->NumCells(0), grid->NumCells(1));
+  Eigen::MatrixXd density = Eigen::MatrixXd::Ones(grid->NumCells(0), grid->NumCells(1))/(N*N*grid->dx*grid->dy);
 
   //double radius = 0.1001;
   //AddCircle(density, 0.4,0.8, radius, grid->dx, grid->dy);
