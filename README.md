@@ -28,15 +28,19 @@ cmake -DCMAKE_INSTALL_PREFIX=<Some/Install/Dir> -DSDOT_GTEST_DIR=<gtest/install/
 The `gtest/install/dir` should be the folder that contains the `include` and
 `lib` folders where GTest has been installed.
 
-3. Build SDOT
+3. Build SDOT (including optional tests)
 
 ```bash
 make -j4 install
 ```
 
-4. (Optional) Build the tests
+4. (Optional) Run the tests
 ```bash
 make test
+```
+or, to run just the unit tests
+```bash
+./RunUnitTests
 ```
 
 5. Add the SDOT paths to your environment variables
