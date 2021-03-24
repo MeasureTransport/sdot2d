@@ -3,8 +3,7 @@
 0. Install Dependencies:
 
 ```bash
-conda install -c conda-forge cgal
-conda install -c anaconda cmake
+conda install -c conda-forge cgal cmake
 ```
 
 1. Clone SDOT and dependent repositories
