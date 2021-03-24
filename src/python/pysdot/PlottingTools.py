@@ -47,7 +47,10 @@ def PlotDiagram(lagDiag, ax, **kwargs):
         assert(cell_colors.shape[0]==lagDiag.NumCells());
         p.set_array(cell_colors)
     ax.add_collection(p)
-    #fig.colorbar(p, ax=ax)
+
+    if('add_colorbar' in kwargs):
+        if(kwargs['add_colorbar']):
+            plt.colorbar(p, ax=ax)
 
     centroids = None
     if('distribution' in kwargs):

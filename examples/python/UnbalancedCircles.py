@@ -53,7 +53,7 @@ class InitialState:
         self.probs = (1.0/num_points)*np.ones(num_points)
 
         # Create an (balanced) optimal quantization of the initial circle
-        opts = {'Lloyd Steps':200, 'Lloyd Tol':1e-5, 'GTol Abs':1e-8, 'Max Steps': 300}
+        opts = {'Lloyd Steps':200, 'Lloyd Tol':1e-4, 'GTol Abs':1e-9, 'Max Steps': 300}
         seed_pts = self._GenerateSeedPts(num_points)
         self.diag = ot.SemidiscreteOT.BuildCentroidal(self.dist, seed_pts, self.probs, opts)
         self.pts = self.diag.Centroids(self.dist)
@@ -202,22 +202,86 @@ def PartiallyLeftDomain(initial_state):
 
     plt.show()
 
+def ExplicitMinimization(initial_state):
+
+    # Set the second position
+    loc = np.array([0.75*circle_radius, 0.7])
+    dens_vals = CreateCircleDensity(loc, circle_radius)
+
+    # Scale the density so the values are the same as the initial state
+    nnz0 = np.sum(initial_state.dens_vals>0)
+    nnz1 = np.sum(dens_vals>0)
+    dens_vals *= (nnz1/nnz0)
+
+    dist = ot.DiscretizedDistribution(grid, dens_vals)
+
+    # Compute the transport between the first points and the
+    solver = ot.QuadraticRegularizedSDOT(dist, initial_state.pts, initial_state.probs, 5)
+
+    num_pts = initial_state.pts.shape[1]
+    opts = {'Max Steps':500, 'GTol Abs':1e-8, 'FTol Abs':0.0, 'Accept Ratio':0.01, 'Shrink Ratio':0.01}
+
+    prices = np.ones(num_pts)
+    prices, obj0 = solver.Solve(prices, opts)
+    print('Initial Objective = ', obj0)
+    pts0 = solver.MarginalCentroids()
+    pts = np.copy(pts0)
+
+    stepSize = 0.1
+    prices = np.ones(num_pts)
+
+    maxIts = 10
+    objs = np.zeros(maxIts)
+    for i in range(maxIts):
+        solver = ot.QuadraticRegularizedSDOT(dist, pts, initial_state.probs, 5)
+        prices, objs[i] = solver.Solve(prices,opts)
+        pts=solver.MarginalCentroids()
+
+
+    plt.plot(objs)
+    plt.show()
+
+    # Estimate the velocity
+    diag = solver.Diagram()
+    true_velocity = loc-initial_state.center
+    ot_velocity = solver.MarginalCentroids()-initial_state.pts
+    print('From:')
+    print(initial_state.pts)
+    print('To:')
+    print(solver.MarginalCentroids())
+    print('True Velocity:\n',true_velocity)
+    print('OT Velocity:\n',ot_velocity)
+
+    # Use the results to
+    fig, ax = plt.subplots()
+    ot.PlotDiagram(solver.Diagram(), ax,
+                   distribution=dist,
+                   cell_colors=np.abs(ot_velocity[0,:]-true_velocity[0]),
+                   add_colorbar=True)
+                  
+    plt.show()
+
 
 loc0 = np.array([0.6,0.3])
-initial_state = InitialState(loc0, circle_radius, 3)
-print('\n\n================================')
-print('Balanced Mass with Unbalanced Solver')
-print('----------------------------------\n')
-BalancedCase(initial_state)
+initial_state = InitialState(loc0, circle_radius, 50)
+# print('\n\n================================')
+# print('Balanced Mass with Unbalanced Solver')
+# print('----------------------------------\n')
+# BalancedCase(initial_state)
+#
+# print('\n\n================================')
+# print('Intensity Change')
+# print('----------------------------------\n')
+# IntensityChange(initial_state)
+#
+# print('\n\n================================')
+# print('Partially Occluded')
+# print('----------------------------------\n')
+# PartiallyLeftDomain(initial_state)
 
 print('\n\n================================')
-print('Intensity Change')
+print('Explicit Minimization')
 print('----------------------------------\n')
-IntensityChange(initial_state)
-
-print('\n\n================================')
-print('Partially Occluded')
-print('----------------------------------\n')
-PartiallyLeftDomain(initial_state)
+ExplicitMinimization(initial_state)
 
 print('\n\n')
