@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import powerlaw
 
-numPts = 1200
+numPts = 200
 
 xbnds = [0.0,1.0] # minimum and maximum x values
 ybnds = [0.0,1.0] # minimum and maximum y values
@@ -17,11 +17,13 @@ dist = ot.DiscretizedDistribution(grid,dens)
 
 
 # The nugget is meant to prevent probabilities from getting too small and causing issues in the SDOT calculations
-powExp = 0.1
-nugget = 0.1
+powExp = 0.6
+nugget = 0.01
 rv = powerlaw(powExp)
 ptProbs = nugget+rv.rvs(size=numPts)
+ptProbs /= np.sum(ptProbs)
 
+print('Point probabilities: ', ptProbs)
 # Construct the Centroidal Power diagram.  This function uses Lloyd's algorithm
 # with latin hypercube samples as initial points (https://en.wikipedia.org/wiki/Lloyd%27s_algorithm)
 # Arguments to BuildCentroidal are:
@@ -29,7 +31,8 @@ ptProbs = nugget+rv.rvs(size=numPts)
 # - The probabilities of the points
 # - The maximum number of allowed iterations in Lloyd's algorithm
 # - A tolerance on the maximum distance between a cell centroid and seed point.
-diag = ot.SemidiscreteOT.BuildCentroidal(dist,ptProbs,10,0.001)
+opts = {'Lloyd Steps':200, 'Lloyd Tol':1e-3, 'Max Steps': 50}
+diag = ot.SemidiscreteOT.BuildCentroidal(dist,ptProbs,opts)
 
 areas = diag.Areas(dist)
 

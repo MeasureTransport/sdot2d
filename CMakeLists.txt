@@ -1,10 +1,16 @@
 cmake_minimum_required(VERSION 3.10)
 
 # set the project name and version
-project(SemiDiscreteOT VERSION 1.0)
+project(SDOT)
+set(${CMAKE_PROJECT_NAME}_MAJOR_VERSION 0)
+set(${CMAKE_PROJECT_NAME}_MINOR_VERSION 1)
+set(${CMAKE_PROJECT_NAME}_PATCH_VERSION 0)
+set(${CMAKE_PROJECT_NAME}_VERSION ${${CMAKE_PROJECT_NAME}_MAJOR_VERSION}.${${CMAKE_PROJECT_NAME}_MINOR_VERSION}.${${CMAKE_PROJECT_NAME}_PATCH_VERSION})
+
+
 
 # specify the C++ standard
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Set c++ compiler flags
@@ -20,9 +26,12 @@ set(LibrarySources
     src/DiscretizedDistribution.cpp
     src/SemiDiscreteOT.cpp
     src/Polygon.cpp
-    src/Integrands/ConstantIntegrand.cpp
-    src/Integrands/TransportIntegrand.cpp
     src/OptionUtilities.cpp
+    src/Distances/Wasserstein2.cpp
+    src/Distances/QuadraticRegularization.cpp
+    src/Distances/TriangularQuadrature.cpp
+    src/Distances/RectangularQuadrature.cpp
+    src/Distances/LineQuadrature.cpp
 )
 
 # Set the source files for the python wrapper
@@ -30,18 +39,11 @@ set(WrapperSources
     src/PythonBindings.cpp
 )
 
+##################################
 # Find CGAL
 find_package(CGAL REQUIRED)
 find_package(GMP)
 find_package(MPFR)
-
-#find_package(OpenMP)
-#if(OPENMP_FOUND)
-#    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-#    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-#    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
-#endif(OPENMP_FOUND)
-
 
 include_directories(include ${CGAL_INCLUDE_DIRS})
 set(ExternalLibraries ${CGAL_LIBRARY} ${GMP_LIBRARIES} ${MPFR_LIBRARIES})
@@ -57,20 +59,51 @@ endif()
 add_library(sdot SHARED ${LibrarySources})
 target_link_libraries(sdot ${ExternalLibraries})
 
+
+
+###################################
 ## Add test executables
+enable_testing()
+find_package(GTest HINTS ${SDOT_GTEST_DIR})
+
+if(GTest_FOUND)
+
+  message(STATUS "GTest found.")
+
+  set(unitTestSources
+    tests/unit/DistanceTests.cpp
+    tests/unit/LaguerreDiagramTests.cpp
+    tests/unit/SemiDiscreteOTTests.cpp
+    tests/unit/QuadratureTests.cpp
+    tests/unit/RunUnitTests.cpp
+  )
+
+  add_executable(RunUnitTests ${unitTestSources})
+  target_link_libraries(RunUnitTests sdot ${OtherLibraries} GTest::gtest)
+  add_test(UnitTests RunUnitTests)
+
+else()
+  message(STATUS "GTest was not found and unit tests will be skipped.")
+endif()
+
 add_executable(ConstructLaguerre tests/ConstructLaguerre.cpp)
 target_link_libraries(ConstructLaguerre sdot ${OtherLibraries})
+add_test(BasicLaguerre ConstructLaguerre)
 
 add_executable(ComputeSDOT tests/ComputeSDOT.cpp)
 target_link_libraries(ComputeSDOT sdot ${OtherLibraries})
+add_test(BasicOT ComputeSDOT)
 
 add_executable(Convexify tests/Convexify.cpp)
 target_link_libraries(Convexify sdot ${OtherLibraries})
+add_test(Convexify Convexify)
 
 add_executable(CircleProblem tests/CircleProblem.cpp)
 target_link_libraries(CircleProblem sdot ${OtherLibraries})
+add_test(SimpleCircles CircleProblem)
 
-
+###################################
+## Python Bindings
 # Add pybind11 wrapper
 set(PYBIND11_CPP_STANDARD -std=c++11)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/pybind11)
@@ -89,3 +122,22 @@ install(DIRECTORY src/python
 install(DIRECTORY include/SDOT
         DESTINATION "${CMAKE_INSTALL_PREFIX}/include"
 	      FILES_MATCHING PATTERN "*.h")
+
+
+
+###############################################
+# Add a target to build documentation
+###############################################
+
+find_package(Doxygen)
+if(DOXYGEN_FOUND)
+	message(STATUS "To build documentation, run 'make doc'")
+
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/doc/sdot.doxyfile.in ${CMAKE_CURRENT_BINARY_DIR}/sdot.doxyfile @ONLY)
+  add_custom_target(doc
+      COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/sdot.doxyfile
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+      COMMENT "Generating API documentation with Doxygen" VERBATIM
+  )
+
+endif(DOXYGEN_FOUND)

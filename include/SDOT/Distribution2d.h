@@ -22,6 +22,8 @@ namespace sdot{
 
     virtual std::shared_ptr<RegularGrid> const& Grid() const{return grid;};
 
+    virtual double TotalMass() const = 0;
+    
   protected:
     std::shared_ptr<RegularGrid> grid;
 
