@@ -8,8 +8,7 @@
 #include "SDOT/Distribution2d.h"
 #include "SDOT/DiscretizedDistribution.h"
 #include "SDOT/SemiDiscreteOT.h"
-#include "SDOT/Distances/Wasserstein2.h"
-#include "SDOT/Distances/QuadraticRegularization.h"
+#include "SDOT/Distances/Distances.h"
 
 namespace py = pybind11;
 using namespace sdot;
@@ -93,7 +92,7 @@ PYBIND11_MODULE(_pysdot, m) {
     .def_static("BuildCentroidal", (std::shared_ptr<LaguerreDiagram> (*)(std::shared_ptr<Distribution2d> const&, Eigen::VectorXd const&, OptionList)) &SemidiscreteOT<Wasserstein2>::BuildCentroidal, py::arg("dist"), py::arg("probs"),py::arg("opts")=OptionList())
     .def_static("BuildCentroidal", (std::shared_ptr<LaguerreDiagram> (*)(std::shared_ptr<Distribution2d> const&, unsigned int, OptionList)) &SemidiscreteOT<Wasserstein2>::BuildCentroidal, py::arg("dist"),py::arg("numPts"), py::arg("opts")=OptionList());
 
-  py::class_<SemidiscreteOT<QuadraticRegularization>, std::shared_ptr<SemidiscreteOT<QuadraticRegularization>>>(m, "QuadraticRegularizedSDOT")
+  py::class_<SemidiscreteOT<QuadraticRegularization>, std::shared_ptr<SemidiscreteOT<QuadraticRegularization>>>(m, "SemidiscreteQR")
     .def(py::init<std::shared_ptr<Distribution2d> const&, Eigen::MatrixXd const&, Eigen::VectorXd const&>())
     .def(py::init<std::shared_ptr<Distribution2d> const&, Eigen::MatrixXd const&, Eigen::VectorXd const&, double>())
     .def("Solve", &SemidiscreteOT<QuadraticRegularization>::Solve, py::arg("prices0"), py::arg("opts")=OptionList())
@@ -107,4 +106,20 @@ PYBIND11_MODULE(_pysdot, m) {
     .def_static("BuildCentroidal", (std::shared_ptr<LaguerreDiagram> (*)(std::shared_ptr<Distribution2d> const&, Eigen::Matrix2Xd const&, Eigen::VectorXd const&, OptionList)) &SemidiscreteOT<QuadraticRegularization>::BuildCentroidal, py::arg("dist"), py::arg("initialPoints"), py::arg("probs"),py::arg("opts")=OptionList())
     .def_static("BuildCentroidal", (std::shared_ptr<LaguerreDiagram> (*)(std::shared_ptr<Distribution2d> const&, Eigen::VectorXd const&, OptionList)) &SemidiscreteOT<QuadraticRegularization>::BuildCentroidal, py::arg("dist"), py::arg("probs"),py::arg("opts")=OptionList())
     .def_static("BuildCentroidal", (std::shared_ptr<LaguerreDiagram> (*)(std::shared_ptr<Distribution2d> const&, unsigned int, OptionList)) &SemidiscreteOT<QuadraticRegularization>::BuildCentroidal, py::arg("dist"),py::arg("numPts"), py::arg("opts")=OptionList());
+
+
+    py::class_<SemidiscreteOT<GHK>, std::shared_ptr<SemidiscreteOT<GHK>>>(m, "SemidiscreteGHK")
+      .def(py::init<std::shared_ptr<Distribution2d> const&, Eigen::MatrixXd const&, Eigen::VectorXd const&>())
+      .def(py::init<std::shared_ptr<Distribution2d> const&, Eigen::MatrixXd const&, Eigen::VectorXd const&, double>())
+      .def("Solve", &SemidiscreteOT<GHK>::Solve, py::arg("prices0"), py::arg("opts")=OptionList())
+      .def("Diagram", &SemidiscreteOT<GHK>::Diagram)
+      .def("PointGradient", (Eigen::Matrix2Xd (SemidiscreteOT<GHK>::*)(Eigen::VectorXd const&, LaguerreDiagram const&) const) &SemidiscreteOT<GHK>::PointGradient)
+      .def("PointGradient", (Eigen::Matrix2Xd (SemidiscreteOT<GHK>::*)() const) &SemidiscreteOT<GHK>::PointGradient)
+      .def("SetPoints", &SemidiscreteOT<GHK>::SetPoints)
+      .def("Objective", &SemidiscreteOT<GHK>::Objective)
+      .def("MarginalCentroids",(Eigen::Matrix2Xd (SemidiscreteOT<GHK>::*)(Eigen::VectorXd const&, LaguerreDiagram const&) const) &SemidiscreteOT<GHK>::MarginalCentroids)
+      .def("MarginalCentroids",(Eigen::Matrix2Xd (SemidiscreteOT<GHK>::*)() const) &SemidiscreteOT<GHK>::MarginalCentroids)
+      .def_static("BuildCentroidal", (std::shared_ptr<LaguerreDiagram> (*)(std::shared_ptr<Distribution2d> const&, Eigen::Matrix2Xd const&, Eigen::VectorXd const&, OptionList)) &SemidiscreteOT<GHK>::BuildCentroidal, py::arg("dist"), py::arg("initialPoints"), py::arg("probs"),py::arg("opts")=OptionList())
+      .def_static("BuildCentroidal", (std::shared_ptr<LaguerreDiagram> (*)(std::shared_ptr<Distribution2d> const&, Eigen::VectorXd const&, OptionList)) &SemidiscreteOT<GHK>::BuildCentroidal, py::arg("dist"), py::arg("probs"),py::arg("opts")=OptionList())
+      .def_static("BuildCentroidal", (std::shared_ptr<LaguerreDiagram> (*)(std::shared_ptr<Distribution2d> const&, unsigned int, OptionList)) &SemidiscreteOT<GHK>::BuildCentroidal, py::arg("dist"),py::arg("numPts"), py::arg("opts")=OptionList());
 }

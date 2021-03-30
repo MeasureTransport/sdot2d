@@ -1,7 +1,7 @@
 #include "SDOT/Distances/LineQuadrature.h"
 #include "SDOT/Distances/RectangularQuadrature.h"
 #include "SDOT/Distances/TriangularQuadrature.h"
-#include "SDOT/Distances/QuadraticRegularization.h"
+#include "SDOT/Distances/Distances.h"
 
 #include <gtest/gtest.h>
 

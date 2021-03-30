@@ -28,7 +28,9 @@ set(LibrarySources
     src/Polygon.cpp
     src/OptionUtilities.cpp
     src/Distances/Wasserstein2.cpp
-    src/Distances/QuadraticRegularization.cpp
+    src/Distances/QuadraticRegularizationFunctions.cpp
+    src/Distances/GHKFunctions.cpp
+    src/Distances/QuadratureDistance.cpp
     src/Distances/TriangularQuadrature.cpp
     src/Distances/RectangularQuadrature.cpp
     src/Distances/LineQuadrature.cpp

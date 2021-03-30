@@ -1,5 +1,4 @@
-#include "SDOT/Distances/Wasserstein2.h"
-#include "SDOT/Distances/QuadraticRegularization.h"
+#include "SDOT/Distances/Distances.h"
 
 #include <gtest/gtest.h>
 

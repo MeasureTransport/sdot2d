@@ -1,5 +1,5 @@
-#ifndef DISTANCES_QUADRATICREGULARIZATION_H
-#define DISTANCES_QUADRATICREGULARIZATION_H
+#ifndef DISTANCES_QUADRATUREDISTANCE_H
+#define DISTANCES_QUADRATUREDISTANCE_H
 
 #include <Eigen/Core>
 
@@ -7,31 +7,28 @@ namespace sdot {
 
 namespace distances{
 
+/**
+@class QuadratureDistance
+@ingroup Distances
+@brief Provides an interface to integrating conjugate functions with quadrature.
+@details Following the formulation of [Bourne et al.], entropic unbalanced optimal
+transport can be framed in terms of integrals involving a conjugate function
+\f$F^\ast(z)\f$ and its derivatives.  This template class can approximate all of
+the integrals necessary for SDOT using quadrature.   The template argument is
+another class which must implement three static functions:
+- `double Evaluate(double z, double penaltyCoeff=1)`
+- `double Derivative(double z, double penaltyCoeff=1)`
+- `double Derivative2(double z, double penaltyCoeff=1)`
 
-/** @class QuadraticRegularization
-    @ingroup Distances
-    @details The Quadratic Regularization described in Example 2.8 of
-    [Bourne et al., 2018](https://arxiv.org/pdf/1808.01962.pdf) uses the function
-    \f[
-    F(s) = (s-1)^2 ,
-    \f]
-    which results in a conjugate function \f$F^\ast(z)\f$ of the form
-    \f[
-    F^\ast(z) = \left\{ \begin{array}{ll} \frac{z^2}{4} + z & \text{if} z\geq -2\\ -1 & \text{otherwise}\endd{array}\right.
-    \f]
+@seealso  QuadraticRegularizationFunctions
 */
-class QuadraticRegularization{
+template<typename ConjugateFunctionType>
+class QuadratureDistance{
 public:
 
-  /** Evaluates the conjugate function \f$F^\ast(z)\f$ at a point \f$z\f$. */
-  static double Evaluate(double z, double penaltyCoeff=1);
-
-  /** Evaluates the derivative of the conjugate function \f$\frac{\partial}{\partial z}F^\ast(z)\f$ at a point \f$z\f$. */
-  static double Derivative(double z, double penaltyCoeff=1);
-
-  /** Evaluates the second derivative of the conjugate function \f$\frac{\partial}{\partial z}F^\ast(z)\f$ at a point \f$z\f$. */
-  static double Derivative2(double z, double penaltyCoeff=1);
-
+  static double Evaluate(double z, double penaltyCoeff=1){return  ConjugateFunctionType::Evaluate(z,penaltyCoeff);};
+  static double Derivative(double z, double penaltyCoeff=1){return  ConjugateFunctionType::Derivative(z,penaltyCoeff);};
+  static double Derivative2(double z, double penaltyCoeff=1){return  ConjugateFunctionType::Derivative2(z,penaltyCoeff);};
 
   /**
   Returns
@@ -200,6 +197,7 @@ public:
                                   double penaltyCoeff=1);
 
 }; // class Wasserstein2
+
 
 }// namespace distances
 } // namespace sdot

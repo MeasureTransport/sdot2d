@@ -1,7 +1,13 @@
 #ifndef DISTANCES_DISTANCES_H
 #define DISTANCES_DISTANCES_H
 
+#include "SDOT/Distances/QuadratureDistance.h"
+#include "SDOT/Distances/QuadraticRegularizationFunctions.h"
+#include "SDOT/Distances/GHKFunctions.h"
+#include "SDOT/Distances/Wasserstein2.h"
+
 namespace sdot {
+namespace distances{
 
 /** @defgroup Distances
     @details In [(Bourne et al., 2018)](https://arxiv.org/pdf/1808.01962.pdf), a family of unbalanced SDOT approaches
@@ -63,6 +69,10 @@ namespace sdot {
 
 */
 
+  typedef QuadratureDistance<QuadraticRegularizationFunctions> QuadraticRegularization;
+  typedef QuadratureDistance<GHKFunctions> GHK;
+
+} // namespace distances
 } // namespace sdot
 
 #endif

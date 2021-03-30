@@ -40,7 +40,17 @@ def PlotDiagram(lagDiag, ax, **kwargs):
         patches.append( mpatch.Polygon(verts.T) )
 
     #colors = list(range(lagDiag.NumCells()))
-    p = PatchCollection(patches, facecolor='gray', edgecolor='k', alpha=0.6)
+    edgecolor='k'
+    facecolor='gray'
+    alpha=0.6
+    if('alpha' in kwargs):
+        alpha = kwargs['alpha']
+    if('facecolor' in kwargs):
+        facecolor = kwargs['facecolor']
+    if('edgecolor' in kwargs):
+        edgecolor=kwargs['edgecolor']
+
+    p = PatchCollection(patches, facecolor=facecolor, edgecolor=edgecolor, alpha=alpha)
 
     if('cell_colors' in kwargs):
         cell_colors = np.array(kwargs['cell_colors'])

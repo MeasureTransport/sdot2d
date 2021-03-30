@@ -42,7 +42,6 @@ LaguerreDiagram::LaguerreDiagram(BoundingBox const& bbox,
 {
 }
 
-
 Eigen::Matrix2Xd LaguerreDiagram::GetCellVertices(int ind) const
 {
   auto& poly = laguerreCells.at(ind);
