@@ -28,7 +28,13 @@ PYBIND11_MODULE(_pysdot, m) {
     .def("GetVertices", &Polygon::GetVertices)
     .def("ConvexPartition",&Polygon::ConvexPartition)
     .def("IsConvex", &Polygon::IsConvex)
-    .def("ConvexHull", &Polygon::ConvexHull);
+    .def("ConvexHull", &Polygon::ConvexHull)
+    .def("Intersection", &Polygon::Intersection)
+    .def("Intersects", &Polygon::Intersects)
+    .def("Area",&Polygon::Area)
+    .def("SecondMoment", &Polygon::SecondMoment)
+    .def("Translate", &Polygon::Translate)
+    .def("Rotate", &Polygon::Rotate);
 
   py::class_<RegularGrid, std::shared_ptr<RegularGrid>>(m,"RegularGrid")
     .def(py::init<double,double,double,double, unsigned int, unsigned int>())
@@ -84,6 +90,10 @@ PYBIND11_MODULE(_pysdot, m) {
     .def("Diagram", &SemidiscreteOT<Wasserstein2>::Diagram)
     .def("PointGradient", (Eigen::Matrix2Xd (SemidiscreteOT<Wasserstein2>::*)(Eigen::VectorXd const&, LaguerreDiagram const&) const) &SemidiscreteOT<Wasserstein2>::PointGradient)
     .def("PointGradient", (Eigen::Matrix2Xd (SemidiscreteOT<Wasserstein2>::*)() const) &SemidiscreteOT<Wasserstein2>::PointGradient)
+    .def("PointHessian", (Eigen::SparseMatrix<double> (SemidiscreteOT<Wasserstein2>::*)(Eigen::VectorXd const&, LaguerreDiagram const&) const) &SemidiscreteOT<Wasserstein2>::PointHessian)
+    .def("PointHessian", (Eigen::SparseMatrix<double> (SemidiscreteOT<Wasserstein2>::*)() const) &SemidiscreteOT<Wasserstein2>::PointHessian)
+    .def("LloydPointHessian", (Eigen::Matrix2Xd (SemidiscreteOT<Wasserstein2>::*)(Eigen::VectorXd const&, LaguerreDiagram const&) const) &SemidiscreteOT<Wasserstein2>::LloydPointHessian)
+    .def("LloydPointHessian", (Eigen::Matrix2Xd (SemidiscreteOT<Wasserstein2>::*)() const) &SemidiscreteOT<Wasserstein2>::LloydPointHessian)
     .def("SetPoints", &SemidiscreteOT<Wasserstein2>::SetPoints)
     .def("Objective", &SemidiscreteOT<Wasserstein2>::Objective)
     .def("MarginalCentroids",(Eigen::Matrix2Xd (SemidiscreteOT<Wasserstein2>::*)(Eigen::VectorXd const&, LaguerreDiagram const&) const) &SemidiscreteOT<Wasserstein2>::MarginalCentroids)
@@ -99,6 +109,10 @@ PYBIND11_MODULE(_pysdot, m) {
     .def("Diagram", &SemidiscreteOT<QuadraticRegularization>::Diagram)
     .def("PointGradient", (Eigen::Matrix2Xd (SemidiscreteOT<QuadraticRegularization>::*)(Eigen::VectorXd const&, LaguerreDiagram const&) const) &SemidiscreteOT<QuadraticRegularization>::PointGradient)
     .def("PointGradient", (Eigen::Matrix2Xd (SemidiscreteOT<QuadraticRegularization>::*)() const) &SemidiscreteOT<QuadraticRegularization>::PointGradient)
+    .def("PointHessian", (Eigen::SparseMatrix<double> (SemidiscreteOT<QuadraticRegularization>::*)(Eigen::VectorXd const&, LaguerreDiagram const&) const) &SemidiscreteOT<QuadraticRegularization>::PointHessian)
+    .def("PointHessian", (Eigen::SparseMatrix<double> (SemidiscreteOT<QuadraticRegularization>::*)() const) &SemidiscreteOT<QuadraticRegularization>::PointHessian)
+    .def("LloydPointHessian", (Eigen::Matrix2Xd (SemidiscreteOT<QuadraticRegularization>::*)(Eigen::VectorXd const&, LaguerreDiagram const&) const) &SemidiscreteOT<QuadraticRegularization>::LloydPointHessian)
+    .def("LloydPointHessian", (Eigen::Matrix2Xd (SemidiscreteOT<QuadraticRegularization>::*)() const) &SemidiscreteOT<QuadraticRegularization>::LloydPointHessian)
     .def("SetPoints", &SemidiscreteOT<QuadraticRegularization>::SetPoints)
     .def("Objective", &SemidiscreteOT<QuadraticRegularization>::Objective)
     .def("MarginalCentroids",(Eigen::Matrix2Xd (SemidiscreteOT<QuadraticRegularization>::*)(Eigen::VectorXd const&, LaguerreDiagram const&) const) &SemidiscreteOT<QuadraticRegularization>::MarginalCentroids)
@@ -107,7 +121,6 @@ PYBIND11_MODULE(_pysdot, m) {
     .def_static("BuildCentroidal", (std::shared_ptr<LaguerreDiagram> (*)(std::shared_ptr<Distribution2d> const&, Eigen::VectorXd const&, OptionList)) &SemidiscreteOT<QuadraticRegularization>::BuildCentroidal, py::arg("dist"), py::arg("probs"),py::arg("opts")=OptionList())
     .def_static("BuildCentroidal", (std::shared_ptr<LaguerreDiagram> (*)(std::shared_ptr<Distribution2d> const&, unsigned int, OptionList)) &SemidiscreteOT<QuadraticRegularization>::BuildCentroidal, py::arg("dist"),py::arg("numPts"), py::arg("opts")=OptionList());
 
-
     py::class_<SemidiscreteOT<GHK>, std::shared_ptr<SemidiscreteOT<GHK>>>(m, "SemidiscreteGHK")
       .def(py::init<std::shared_ptr<Distribution2d> const&, Eigen::MatrixXd const&, Eigen::VectorXd const&>())
       .def(py::init<std::shared_ptr<Distribution2d> const&, Eigen::MatrixXd const&, Eigen::VectorXd const&, double>())
@@ -115,6 +128,10 @@ PYBIND11_MODULE(_pysdot, m) {
       .def("Diagram", &SemidiscreteOT<GHK>::Diagram)
       .def("PointGradient", (Eigen::Matrix2Xd (SemidiscreteOT<GHK>::*)(Eigen::VectorXd const&, LaguerreDiagram const&) const) &SemidiscreteOT<GHK>::PointGradient)
       .def("PointGradient", (Eigen::Matrix2Xd (SemidiscreteOT<GHK>::*)() const) &SemidiscreteOT<GHK>::PointGradient)
+      .def("PointHessian", (Eigen::SparseMatrix<double> (SemidiscreteOT<GHK>::*)(Eigen::VectorXd const&, LaguerreDiagram const&) const) &SemidiscreteOT<GHK>::PointHessian)
+      .def("PointHessian", (Eigen::SparseMatrix<double> (SemidiscreteOT<GHK>::*)() const) &SemidiscreteOT<GHK>::PointHessian)
+      .def("LloydPointHessian", (Eigen::Matrix2Xd (SemidiscreteOT<GHK>::*)(Eigen::VectorXd const&, LaguerreDiagram const&) const) &SemidiscreteOT<GHK>::LloydPointHessian)
+      .def("LloydPointHessian", (Eigen::Matrix2Xd (SemidiscreteOT<GHK>::*)() const) &SemidiscreteOT<GHK>::LloydPointHessian)
       .def("SetPoints", &SemidiscreteOT<GHK>::SetPoints)
       .def("Objective", &SemidiscreteOT<GHK>::Objective)
       .def("MarginalCentroids",(Eigen::Matrix2Xd (SemidiscreteOT<GHK>::*)(Eigen::VectorXd const&, LaguerreDiagram const&) const) &SemidiscreteOT<GHK>::MarginalCentroids)

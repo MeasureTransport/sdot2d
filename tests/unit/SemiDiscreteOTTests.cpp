@@ -65,6 +65,8 @@ TEST(SemiDiscreteOT, Objective)
 
 TEST(SemiDiscreteOT, Objective_QR)
 {
+  const double penalty = 0.5;
+
   Eigen::MatrixXd pts(2,2);
   pts << 0.25, 0.75,
          0.5, 0.5;
@@ -78,7 +80,7 @@ TEST(SemiDiscreteOT, Objective_QR)
   auto grid = std::make_shared<RegularGrid>(bbox, N, N);
   auto dist = std::make_shared<DiscretizedDistribution>(grid, Eigen::MatrixXd::Ones(N,N)/(N*N));
 
-  SemidiscreteOT<QuadraticRegularization> solver(dist, pts, probs);
+  SemidiscreteOT<QuadraticRegularization> solver(dist, pts, probs, penalty);
 
   // Set the prices and compute the Laguerre diagram
   Eigen::VectorXd prices = 1.25*Eigen::VectorXd::Ones(pts.cols());
@@ -118,6 +120,8 @@ TEST(SemiDiscreteOT, Objective_QR)
 
 TEST(SemiDiscreteOT, Objective_GHK)
 {
+  const double penalty = 0.5;
+
   Eigen::MatrixXd pts(2,2);
   pts << 0.25, 0.75,
          0.5, 0.5;
@@ -131,7 +135,7 @@ TEST(SemiDiscreteOT, Objective_GHK)
   auto grid = std::make_shared<RegularGrid>(bbox, N, N);
   auto dist = std::make_shared<DiscretizedDistribution>(grid, Eigen::MatrixXd::Ones(N,N)/(N*N));
 
-  SemidiscreteOT<GHK> solver(dist, pts, probs);
+  SemidiscreteOT<GHK> solver(dist, pts, probs, penalty);
 
   // Set the prices and compute the Laguerre diagram
   Eigen::VectorXd prices = 1.25*Eigen::VectorXd::Ones(pts.cols());

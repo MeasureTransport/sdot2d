@@ -462,7 +462,7 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT<ConjugateFunctionType>::Solve(
 
   if(printLevel>0){
     std::cout << "Using NewtonTrust optimizer..." << std::endl;
-    std::cout << "  Iteration, TrustRadius, Dual Objective,        ||g||,   ||g||/sqrt(dim)" << std::endl;
+    std::cout << "  Iteration, TrustRadius, Empty Cells,           rho, Dual Objective,        ||g||,   ||g||/sqrt(dim)" << std::endl;
   }
 
   // count the non-empty Cells
@@ -474,10 +474,6 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT<ConjugateFunctionType>::Solve(
 
 
   for(int it=0; it<maxEvals; ++it) {
-
-    if(printLevel>0){
-      std::printf("  %9d, %11.2e, %14.3e,        %5.3e,   %15.3e\n", it, trustRadius, -1.0*fval, gradNorm, gradNorm/std::sqrt(double(dim)));
-    }
 
     if((gradNorm < gtol_abs)&&(numEmpty==0)){
       if(printLevel>0){
@@ -497,8 +493,7 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT<ConjugateFunctionType>::Solve(
     std::tie(newF, newGrad) = ComputeGradient(newX, *newLagDiag);
     newF *= -1.0;
     newGrad *= -1.0;
-
-    //newGradNorm = newGrad.norm();
+    newGradNorm = newGrad.norm();
 
     // Use the quadratic submodel to predict the change in the objective
     double trueDelta = newF-fval;
@@ -511,6 +506,10 @@ std::pair<Eigen::VectorXd, double> SemidiscreteOT<ConjugateFunctionType>::Solve(
     // std::cout << "          modDelta = " << modDelta << std::endl;
     // std::cout << "          New prices = " << newX.transpose() << std::endl;
     //std::cout << "          rho = " << rho << std::endl;
+
+    if(printLevel>0){
+      std::printf("  %9d, %11.2e,  %10d,    % 5.3e, % 14.3e,    %5.3e,  %15.3e\n", it, trustRadius, numEmpty, rho, -1.0*fval, gradNorm, gradNorm/std::sqrt(double(dim)));
+    }
 
     double stepNorm = step.norm();
     if((stepNorm < xtol_abs)&&(numEmpty==0)){

@@ -5,6 +5,7 @@
 
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 #include <CGAL/Polygon_2.h>
+#include <CGAL/Boolean_set_operations_2.h>
 
 #include <vector>
 
@@ -20,8 +21,9 @@ class Polygon{
 public:
 
   typedef CGAL::Exact_predicates_exact_constructions_kernel K;
-  typedef K::Point_2                   Point_2;
-  typedef CGAL::Polygon_2<K>           Polygon_2;
+  typedef K::Point_2                    Point_2;
+  typedef CGAL::Polygon_2<K>            Polygon_2;
+  typedef CGAL::Polygon_with_holes_2<K> Polygon_with_holes_2;
 
   /** Construct an SDOT::Polygon from polygon vertices.  If the vertices are
       in clockwise order, the order is reversed to make the orientation counter-clockwise.
@@ -50,8 +52,42 @@ public:
   /** Returns the CGAL Polygon_2 object. */
   std::shared_ptr<Polygon_2> ToCGAL(){return cgalPoly;};
 
+  /** Returns the intersection polygon of this polygon with another. */
+  Polygon Intersection(Polygon const& otherPoly) const;
+
+  /** Returns true if this polygon intersects the other polygon and false otherwise. */
+  bool Intersects(Polygon const& otherPoly) const;
+
+  /** Returns the unweighted area of the polygon. */
+  double Area() const{return area;};
+
+  /** Returns the second moment of area around an axis perpendicular to 2d plane
+      and passing through the centroid of the polygon.   Multiplying the output
+      of this function by the mass of the particle gives the moment of inertia.
+  */
+  double SecondMoment() const;
+
+  /** Returns the centroid of the polygon. */
+  Eigen::Vector2d const& Centroid() const{return centroid;};
+
+  /** Translate all vertices in the polygon. */
+  Polygon& Translate(Eigen::Vector2d const& step);
+
+  /** Rotate the polygon around its centroid. */
+  Polygon& Rotate(double angle);
+
 private:
   std::shared_ptr<Polygon_2> cgalPoly;
+
+  double xmin, ymin, xmax, ymax; // The bounding box of the polygon
+  Eigen::Vector2d centroid;
+  double maxRadius=-1; // The radius of a circle centered at the centroid that contains all vertices in the polygon
+  double area=-1; // The area of the polygon
+
+
+  /** Computes the centroid and area  of the polygon. */
+  void _ComputeCentroidArea();
+  void _ComputeRadius();
 
 }; // class Polygon
 
