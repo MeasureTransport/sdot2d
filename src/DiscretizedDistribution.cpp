@@ -21,7 +21,7 @@ Eigen::MatrixXd DiscretizedDistribution::Normalize(std::shared_ptr<RegularGrid> 
 
 double DiscretizedDistribution::TotalMass() const
 {
-  return grid->dx*grid->dy*densVals.sum();
+  return (grid->dx*grid->dy*densVals).sum();
 }
 
 

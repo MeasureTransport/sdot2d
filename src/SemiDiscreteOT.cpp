@@ -47,7 +47,7 @@ void SemidiscreteOT<sdot::distances::Wasserstein2>::CheckNormalization()
 {
   double discrSum = discrProbs.sum();
   double contSum= dist->TotalMass();
-  SDOT_ASSERT(std::abs(discrSum-contSum)<1e-10);
+  SDOT_ASSERT(std::abs(discrSum-contSum)<1e-5);
 }
 
 template<typename ConjugateFunctionType>
