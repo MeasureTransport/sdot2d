@@ -50,7 +50,7 @@ or, to run just the unit tests
 export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:<Some/Install/Dir>/lib
 export PYTHONPATH=$PYTHONPATH:<Some/Install/Dir>/lib:<Some/Install/Dir>/lib/python/
 ```
-#### Linus:
+#### Linux:
 ```bash
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<Some/Install/Dir>/lib
 export PYTHONPATH=$PYTHONPATH:<Some/Install/Dir>/lib:<Some/Install/Dir>/lib/python/
