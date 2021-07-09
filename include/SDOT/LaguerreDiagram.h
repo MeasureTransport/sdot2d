@@ -6,6 +6,7 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
+#include <chrono>
 
 // includes for defining the Voronoi diagram adaptor
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
