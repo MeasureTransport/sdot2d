@@ -11,13 +11,13 @@ conda install -c conda-forge cgal cmake
 1. Clone SDOT and dependent repositories
 
 ```bash
-git clone --recurse-submodules git@public.git.erdc.dren.mil:sirc/sdot.git
+git clone --recurse-submodules git@github.com:mparno/sdot2d.git
 ```
 
 2. Run CMake to configure SDOT
 
 ```bash
-cd <SDOT/source/dir>
+cd sdot2d
 mkdir build
 cd build
 cmake -DCMAKE_INSTALL_PREFIX=<Some/Install/Dir> ..
@@ -62,6 +62,6 @@ export PYTHONPATH=$PYTHONPATH:<Some/Install/Dir>/lib:<Some/Install/Dir>/lib/pyth
 Try running the random points in a rectangle example
 
 ```bash
-cd SDOT/examples/python
+cd sdot2d/examples/python
 python RandomRectangle.py
 ```
