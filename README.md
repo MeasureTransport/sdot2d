@@ -8,13 +8,13 @@
 conda install -c conda-forge cgal cmake
 ```
 
-1. Clone SDOT and dependent repositories
+1. Clone sdot2d and dependent repositories
 
 ```bash
 git clone --recurse-submodules git@github.com:mparno/sdot2d.git
 ```
 
-2. Run CMake to configure SDOT
+2. Run CMake to configure sdot2d
 
 ```bash
 cd sdot2d
@@ -22,6 +22,7 @@ mkdir build
 cd build
 cmake -DCMAKE_INSTALL_PREFIX=<Some/Install/Dir> ..
 ```
+where you should replace `<Some/Install/Dir>` with the location where you want to install the SDOT2d library, for example `~/Installations/SDOT_INSTALL`.
 
 You can also tell CMake where to look for GTest using the following command instead:
 ```bash
