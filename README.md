@@ -1,3 +1,5 @@
+![Build Status](https://github.com/mparno/sdot2d/actions/workflows/build-test.yml/badge.svg)
+
 # Installation:
 
 0. Install Dependencies:
