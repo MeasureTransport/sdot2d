@@ -57,6 +57,6 @@ export PYTHONPATH=$PYTHONPATH:<Some/Install/Dir>/lib:<Some/Install/Dir>/lib/pyth
 Try running the random points in a rectangle example
 
 ```bash
-cd SDOT/examples/python
+cd sdot2d/examples/python
 python RandomRectangle.py
 ```
