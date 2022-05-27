@@ -1,6 +1,10 @@
+
+# Semi-Discrete Optimal Transport in 2d
+<img src="doc/pics/sdot.png" alt="SDOT" height="200"><img src="doc/pics/laguerre.png" alt="Centroidal Laguerre" height="200">
+
 ![Build Status](https://github.com/mparno/sdot2d/actions/workflows/build-test.yml/badge.svg)
 
-# Installation:
+## Installation:
 
 0. Install Dependencies:
 
@@ -59,7 +63,7 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<Some/Install/Dir>/lib
 export PYTHONPATH=$PYTHONPATH:<Some/Install/Dir>/lib:<Some/Install/Dir>/lib/python/
 ```
 
-# Examples:
+## Examples:
 Try running the random points in a rectangle example
 
 ```bash
